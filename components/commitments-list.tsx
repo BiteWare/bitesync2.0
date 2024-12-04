@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 
-interface Commitment {
+export interface Commitment {
   id: string
   type: string
   flexibility: string
@@ -17,7 +18,7 @@ interface Commitment {
   endDate: string
 }
 
-export function CommitmentsList() {
+export function CommitmentsList({ onImport }: { onImport: (commitments: Commitment[]) => void }) {
   const [commitments, setCommitments] = useState<Commitment[]>([
     {
       id: '1',
@@ -38,6 +39,11 @@ export function CommitmentsList() {
   const [editingCommitment, setEditingCommitment] = useState<Commitment | null>(null)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [selectedCommitments, setSelectedCommitments] = useState<string[]>([])
+
+  useEffect(() => {
+    onImport(commitments);
+  }, [commitments]);
 
   const handleAddCommitment = () => {
     console.log('New Commitment:', newCommitment) // For debugging
@@ -77,6 +83,27 @@ export function CommitmentsList() {
       setEditingCommitment(null)
       setEditDialogOpen(false)
     }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedCommitments(commitments.map(c => c.id))
+    } else {
+      setSelectedCommitments([])
+    }
+  }
+
+  const handleSelectCommitment = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedCommitments(prev => [...prev, id])
+    } else {
+      setSelectedCommitments(prev => prev.filter(cId => cId !== id))
+    }
+  }
+
+  const handleBulkDelete = () => {
+    setCommitments(prev => prev.filter(commitment => !selectedCommitments.includes(commitment.id)))
+    setSelectedCommitments([])
   }
 
   return (
@@ -141,6 +168,13 @@ export function CommitmentsList() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {selectedCommitments.length > 0 && (
+          <Button variant="destructive" onClick={handleBulkDelete}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Selected ({selectedCommitments.length})
+          </Button>
+        )}
       </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -200,6 +234,12 @@ export function CommitmentsList() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[50px]">
+              <Checkbox 
+                checked={commitments.length > 0 && selectedCommitments.length === commitments.length}
+                onCheckedChange={handleSelectAll}
+              />
+            </TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Flexibility</TableHead>
             <TableHead>Title</TableHead>
@@ -211,6 +251,12 @@ export function CommitmentsList() {
         <TableBody>
           {commitments.map(commitment => (
             <TableRow key={commitment.id}>
+              <TableCell>
+                <Checkbox 
+                  checked={selectedCommitments.includes(commitment.id)}
+                  onCheckedChange={(checked) => handleSelectCommitment(commitment.id, checked as boolean)}
+                />
+              </TableCell>
               <TableCell>{commitment.type}</TableCell>
               <TableCell>{commitment.flexibility}</TableCell>
               <TableCell>{commitment.title}</TableCell>

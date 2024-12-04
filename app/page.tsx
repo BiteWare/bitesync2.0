@@ -2,13 +2,17 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { UserProfile } from "@/components/user-profile"
-import { CommitmentsList } from "@/components/commitments-list"
+import { CommitmentsList, type Commitment } from "@/components/commitments-list"
 import { ProjectsList } from "@/components/projects-list"
 import { TasksList } from "@/components/tasks-list"
 import { Users, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { BulkImportButton } from "@/components/bulk-import-button"
+import { useState } from "react"
 
 export default function Home() {
+  const [commitments, setCommitments] = useState<Commitment[]>([])
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -38,13 +42,18 @@ export default function Home() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Commitments</CardTitle>
-            <Button variant="outline" size="sm">
-              <Upload className="h-4 w-4 mr-2" />
-              Import Commitments
-            </Button>
+            <BulkImportButton 
+              onImport={(importedCommitments) => {
+                const newCommitments = importedCommitments.map(commitment => ({
+                  ...commitment,
+                  id: Date.now().toString(),
+                })) as Commitment[];
+                setCommitments(prev => [...prev, ...newCommitments]);
+              }}
+            />
           </CardHeader>
           <CardContent>
-            <CommitmentsList />
+            <CommitmentsList onImport={setCommitments} />
           </CardContent>
         </Card>
 

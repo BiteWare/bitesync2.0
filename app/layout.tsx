@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BiteSync - Project & Schedule Coordination',
+  title: 'BiteSync',
   description: 'Optimize schedules and manage project tasks seamlessly',
 }
 

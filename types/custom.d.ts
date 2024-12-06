@@ -1,6 +1,7 @@
 export interface DbCommitment {
   id: string
   user_id: string
+  owner: string
   type: string
   flexibility: string
   title: string
@@ -14,7 +15,7 @@ export interface DbCommitment {
 
 export interface Commitment {
   id: string
-  userId: string
+  owner: string
   type: string
   flexibility: string
   title: string

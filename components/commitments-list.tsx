@@ -24,7 +24,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
   } = useCommitments()
   
   const [newCommitment, setNewCommitment] = useState<Partial<Commitment>>({
-    userId: user?.id || '',
+    owner: user?.email || '',
     type: 'holidays',
     flexibility: 'firm',
     title: '',
@@ -45,8 +45,8 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
   }, [commitments, loading])
 
   useEffect(() => {
-    if (user?.id && !newCommitment.userId) {
-      setNewCommitment(prev => ({ ...prev, userId: user.id || '' }))
+    if (user?.id && !newCommitment.owner) {
+      setNewCommitment(prev => ({ ...prev, owner: user.email || '' }))
     }
   }, [user?.id])
 
@@ -55,7 +55,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
         newCommitment.startDate && newCommitment.endDate) {
       await addCommitment(newCommitment as Omit<Commitment, 'id'>)
       setNewCommitment({
-        userId: user?.id || '',
+        owner: user?.email || '',
         type: 'holidays',
         flexibility: 'firm',
         title: '',
@@ -118,8 +118,8 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
             <div className="grid gap-4 py-4">
               <Input 
                 type="text" 
-                placeholder="User ID"
-                value={newCommitment.userId}
+                placeholder="Owner"
+                value={newCommitment.owner}
                 disabled
               />
               <Select 
@@ -212,8 +212,8 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
           <div className="grid gap-4 py-4">
             <Input 
               type="text" 
-              placeholder="User ID"
-              value={editingCommitment?.userId || ''}
+              placeholder="Owner"
+              value={editingCommitment?.owner || ''}
               disabled
             />
             <Select 
@@ -273,7 +273,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                 onCheckedChange={handleSelectAll}
               />
             </TableHead>
-            <TableHead>User ID</TableHead>
+            <TableHead>Owner</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Flexibility</TableHead>
             <TableHead>Title</TableHead>
@@ -291,7 +291,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                   onCheckedChange={(checked) => handleSelectCommitment(commitment.id, checked as boolean)}
                 />
               </TableCell>
-              <TableCell>{commitment.userId}</TableCell>
+              <TableCell>{commitment.owner}</TableCell>
               <TableCell>{commitment.type}</TableCell>
               <TableCell>{commitment.flexibility}</TableCell>
               <TableCell>{commitment.title}</TableCell>
@@ -305,7 +305,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                     setEditingCommitment(commitment)
                     setEditDialogOpen(true)
                   }}
-                  disabled={commitment.userId !== user?.id}
+                  disabled={commitment.owner !== user?.email}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -313,7 +313,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                   variant="ghost" 
                   size="icon"
                   onClick={() => handleDeleteCommitment(commitment.id)}
-                  disabled={commitment.userId !== user?.id}
+                  disabled={commitment.owner !== user?.email}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

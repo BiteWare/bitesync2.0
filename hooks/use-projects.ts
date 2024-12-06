@@ -14,10 +14,10 @@ export function useProjects() {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .order('CreatedAt', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
-      setProjects(data)
+      setProjects(data || [])
     } catch (error) {
       toast({
         title: "Error fetching projects",
@@ -33,15 +33,30 @@ export function useProjects() {
     name: string; 
     owner_id: string; 
     description?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    required_members?: string | null;
   }) {
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw authError
+      if (!user) throw new Error('No authenticated user found')
+
+      const now = new Date().toISOString()
+      
       const newProject = {
-        name: project.name ?? '',
-        owner_id: project.owner_id ?? '',
-        description: project.description ?? null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        name: project.name,
+        owner_id: user.id,
+        owner_email: user.email || '',
+        description: project.description || null,
+        created_at: now,
+        updated_at: now,
+        start_date: project.start_date || null,
+        end_date: project.end_date || null,
+        required_members: project.required_members || null
       }
+
+      console.log('Creating project with data:', newProject)
 
       const { data, error } = await supabase
         .from('projects')
@@ -49,7 +64,10 @@ export function useProjects() {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
       
       setProjects(prev => [data, ...prev])
       toast({
@@ -58,6 +76,7 @@ export function useProjects() {
       })
       return data
     } catch (error) {
+      console.error('Detailed error:', error)
       toast({
         title: "Error creating project",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -71,7 +90,10 @@ export function useProjects() {
     try {
       const { data, error } = await supabase
         .from('projects')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single()

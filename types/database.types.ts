@@ -89,6 +89,10 @@ export interface Database {
           created_at: string
           updated_at: string
           owner_id: string
+          owner_email: string
+          start_date: string | null
+          end_date: string | null
+          required_members: string | null
         }
         Insert: {
           id?: string
@@ -97,6 +101,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
           owner_id: string
+          owner_email?: string
+          start_date?: string | null
+          end_date?: string | null
+          required_members?: string | null
         }
         Update: {
           id?: string
@@ -105,6 +113,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
           owner_id?: string
+          owner_email?: string
+          start_date?: string | null
+          end_date?: string | null
+          required_members?: string | null
         }
       }
       commitments: {

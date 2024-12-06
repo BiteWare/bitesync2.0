@@ -32,7 +32,7 @@ export function useCommitments() {
       
       setCommitments((data as DbCommitment[]).map(item => ({
         id: item.id,
-        userId: item.user_id,
+        owner: item.owner,
         type: item.type,
         flexibility: item.flexibility,
         title: item.title,
@@ -53,14 +53,15 @@ export function useCommitments() {
     }
   }
 
-  async function addCommitment(commitment: Omit<Commitment, 'id' | 'userId'>) {
-    if (!user?.id) return
+  async function addCommitment(commitment: Omit<Commitment, 'id' | 'owner'>) {
+    if (!user?.id || !user?.email) return
 
     try {
       const { data, error } = await supabase
         .from('commitments')
         .insert({
           user_id: user.id,
+          owner: user.email,
           type: commitment.type,
           flexibility: commitment.flexibility,
           title: commitment.title,
@@ -70,20 +71,20 @@ export function useCommitments() {
           end_time: commitment.endTime
         })
         .select()
-        .single()
+        .single() as { data: DbCommitment, error: null } | { data: null, error: any }
 
       if (error) throw error
 
       const newCommitment: Commitment = {
-        id: data.id,
-        userId: data.user_id,
-        type: data.type,
-        flexibility: data.flexibility,
-        title: data.title,
-        startDate: data.start_date,
-        endDate: data.end_date,
-        startTime: data.start_time,
-        endTime: data.end_time
+        id: (data as DbCommitment).id,
+        owner: (data as DbCommitment).owner,
+        type: (data as DbCommitment).type,
+        flexibility: (data as DbCommitment).flexibility,
+        title: (data as DbCommitment).title,
+        startDate: (data as DbCommitment).start_date,
+        endDate: (data as DbCommitment).end_date,
+        startTime: (data as DbCommitment).start_time,
+        endTime: (data as DbCommitment).end_time
       }
 
       setCommitments(prev => [...prev, newCommitment])
@@ -103,7 +104,7 @@ export function useCommitments() {
 
   async function updateCommitment(commitment: Commitment) {
     try {
-      if (commitment.userId !== user?.id) {
+      if (commitment.owner !== user?.email) {
         throw new Error("You can only edit your own commitments")
       }
 
@@ -145,7 +146,7 @@ export function useCommitments() {
     
     try {
       const commitment = commitments.find(c => c.id === id)
-      if (commitment?.userId !== user.id) {
+      if (commitment?.owner !== user.email) {
         throw new Error("You can only delete your own commitments")
       }
 
@@ -177,7 +178,7 @@ export function useCommitments() {
     
     try {
       const selectedCommitments = commitments.filter(c => ids.includes(c.id))
-      if (!selectedCommitments.every(c => c.userId === user.id)) {
+      if (!selectedCommitments.every(c => c.owner === user.email)) {
         throw new Error("You can only delete your own commitments")
       }
 

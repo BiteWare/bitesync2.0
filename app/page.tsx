@@ -5,22 +5,27 @@ import { UserProfile } from "@/components/user-profile"
 import { CommitmentsList, type Commitment } from "@/components/commitments-list"
 import { ProjectsList } from "@/components/projects-list"
 import { TasksList } from "@/components/tasks-list"
-import { Users, Upload } from "lucide-react"
+import { Users, Upload, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { BulkImportButton } from "@/components/bulk-import-button"
 import { useState } from "react"
+import { useSupabase } from "@/components/providers/supabase-provider"
 
 export default function Home() {
   const [commitments, setCommitments] = useState<Commitment[]>([])
+  const { user, signOut } = useSupabase()
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">BiteSync</h1>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">jack@bitewire.dev</span>
+          <span className="text-sm text-muted-foreground">{user?.email}</span>
           <Button variant="ghost" size="icon">
             <Users className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={signOut}>
+            <LogOut className="h-5 w-5" />
           </Button>
         </div>
       </div>

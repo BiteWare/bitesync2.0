@@ -10,6 +10,12 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'BiteSync',
   description: 'Optimize schedules and manage project tasks seamlessly',
+  icons: {
+    icon: '/bitesynclogo2.png',
+    shortcut: '/bitesynclogo2.png',
+    apple: '/bitesynclogo2.png',
+  },
+  manifest: '/site.webmanifest'
 }
 
 export default function RootLayout({

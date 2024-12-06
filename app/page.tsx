@@ -2,7 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { UserProfile } from "@/components/user-profile"
-import { CommitmentsList, type Commitment } from "@/components/commitments-list"
+import { CommitmentsList } from "@/components/commitments-list"
+import { Commitment } from "@/types/custom"
 import { ProjectsList } from "@/components/projects-list"
 import { TasksList } from "@/components/tasks-list"
 import { Users, Upload, LogOut } from "lucide-react"

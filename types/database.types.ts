@@ -107,6 +107,47 @@ export interface Database {
           owner_id?: string
         }
       }
+      commitments: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          flexibility: string
+          title: string
+          start_date: string
+          end_date: string
+          created_at: string
+          updated_at: string
+          start_time: string | null
+          end_time: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          flexibility: string
+          title: string
+          start_date: string
+          end_date: string
+          created_at?: string
+          updated_at?: string
+          start_time?: string | null
+          end_time?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          flexibility?: string
+          title?: string
+          start_date?: string
+          end_date?: string
+          created_at?: string
+          updated_at?: string
+          start_time?: string | null
+          end_time?: string | null
+        }
+      }
     }
     Views: {
       [_ in never]: never

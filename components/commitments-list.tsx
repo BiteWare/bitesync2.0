@@ -8,33 +8,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
-
-export interface Commitment {
-  id: string
-  type: string
-  flexibility: string
-  title: string
-  startDate: string
-  endDate: string
-}
+import { useCommitments } from '@/hooks/use-commitments'
+import { useSupabase } from '@/components/providers/supabase-provider'
+import { Commitment } from '@/types/custom'
 
 export function CommitmentsList({ onImport }: { onImport: (commitments: Commitment[]) => void }) {
-  const [commitments, setCommitments] = useState<Commitment[]>([
-    {
-      id: '1',
-      type: 'holidays',
-      flexibility: 'firm',
-      title: 'Thanksgiving',
-      startDate: '2024-11-28',
-      endDate: '2024-12-01'
-    }
-  ])
+  const { user } = useSupabase()
+  const { 
+    commitments, 
+    loading, 
+    addCommitment, 
+    updateCommitment, 
+    deleteCommitment, 
+    deleteMultipleCommitments 
+  } = useCommitments()
+  
   const [newCommitment, setNewCommitment] = useState<Partial<Commitment>>({
+    userId: user?.id || '',
     type: 'holidays',
     flexibility: 'firm',
     title: '',
     startDate: '',
-    endDate: ''
+    endDate: '',
+    startTime: '',
+    endTime: ''
   })
   const [editingCommitment, setEditingCommitment] = useState<Commitment | null>(null)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -42,47 +39,50 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
   const [selectedCommitments, setSelectedCommitments] = useState<string[]>([])
 
   useEffect(() => {
-    onImport(commitments);
-  }, [commitments]);
+    if (!loading) {
+      onImport(commitments)
+    }
+  }, [commitments, loading])
 
-  const handleAddCommitment = () => {
-    console.log('New Commitment:', newCommitment) // For debugging
+  useEffect(() => {
+    if (user?.id && !newCommitment.userId) {
+      setNewCommitment(prev => ({ ...prev, userId: user.id || '' }))
+    }
+  }, [user?.id])
+
+  const handleAddCommitment = async () => {
     if (newCommitment.type && newCommitment.flexibility && newCommitment.title && 
         newCommitment.startDate && newCommitment.endDate) {
-      const commitment: Commitment = {
-        id: Date.now().toString(),
-        type: newCommitment.type,
-        flexibility: newCommitment.flexibility,
-        title: newCommitment.title,
-        startDate: newCommitment.startDate,
-        endDate: newCommitment.endDate
-      }
-      setCommitments(prev => [...prev, commitment])
+      await addCommitment(newCommitment as Omit<Commitment, 'id'>)
       setNewCommitment({
+        userId: user?.id || '',
         type: 'holidays',
         flexibility: 'firm',
         title: '',
         startDate: '',
-        endDate: ''
+        endDate: '',
+        startTime: '',
+        endTime: ''
       })
       setAddDialogOpen(false)
-    } else {
-      console.log('Missing required fields') // For debugging
     }
   }
 
-  const handleDeleteCommitment = (id: string) => {
-    setCommitments(prev => prev.filter(commitment => commitment.id !== id))
-  }
-
-  const handleEditCommitment = () => {
+  const handleEditCommitment = async () => {
     if (editingCommitment) {
-      setCommitments(prev => prev.map(commitment => 
-        commitment.id === editingCommitment.id ? editingCommitment : commitment
-      ))
+      await updateCommitment(editingCommitment)
       setEditingCommitment(null)
       setEditDialogOpen(false)
     }
+  }
+
+  const handleDeleteCommitment = async (id: string) => {
+    await deleteCommitment(id)
+  }
+
+  const handleBulkDelete = async () => {
+    await deleteMultipleCommitments(selectedCommitments)
+    setSelectedCommitments([])
   }
 
   const handleSelectAll = (checked: boolean) => {
@@ -101,11 +101,6 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
     }
   }
 
-  const handleBulkDelete = () => {
-    setCommitments(prev => prev.filter(commitment => !selectedCommitments.includes(commitment.id)))
-    setSelectedCommitments([])
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -121,6 +116,12 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
               <DialogTitle>Add New Commitment</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <Input 
+                type="text" 
+                placeholder="User ID"
+                value={newCommitment.userId}
+                disabled
+              />
               <Select 
                 defaultValue="holidays"
                 onValueChange={(value) => setNewCommitment({ ...newCommitment, type: value })}
@@ -152,16 +153,42 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                 value={newCommitment.title}
                 onChange={(e) => setNewCommitment({ ...newCommitment, title: e.target.value })}
               />
-              <Input 
-                type="date"
-                value={newCommitment.startDate}
-                onChange={(e) => setNewCommitment({ ...newCommitment, startDate: e.target.value })}
-              />
-              <Input 
-                type="date"
-                value={newCommitment.endDate}
-                onChange={(e) => setNewCommitment({ ...newCommitment, endDate: e.target.value })}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Date</label>
+                  <Input 
+                    type="date"
+                    value={newCommitment.startDate}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, startDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Time</label>
+                  <Input 
+                    type="time"
+                    value={newCommitment.startTime || ''}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, startTime: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">End Date</label>
+                  <Input 
+                    type="date"
+                    value={newCommitment.endDate}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, endDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">End Time</label>
+                  <Input 
+                    type="time"
+                    value={newCommitment.endTime || ''}
+                    onChange={(e) => setNewCommitment({ ...newCommitment, endTime: e.target.value })}
+                  />
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button onClick={handleAddCommitment}>Add Commitment</Button>
@@ -183,6 +210,12 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
             <DialogTitle>Edit Commitment</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <Input 
+              type="text" 
+              placeholder="User ID"
+              value={editingCommitment?.userId || ''}
+              disabled
+            />
             <Select 
               value={editingCommitment?.type}
               onValueChange={(value) => setEditingCommitment(prev => prev ? {...prev, type: value} : null)}
@@ -240,6 +273,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                 onCheckedChange={handleSelectAll}
               />
             </TableHead>
+            <TableHead>User ID</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Flexibility</TableHead>
             <TableHead>Title</TableHead>
@@ -257,6 +291,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                   onCheckedChange={(checked) => handleSelectCommitment(commitment.id, checked as boolean)}
                 />
               </TableCell>
+              <TableCell>{commitment.userId}</TableCell>
               <TableCell>{commitment.type}</TableCell>
               <TableCell>{commitment.flexibility}</TableCell>
               <TableCell>{commitment.title}</TableCell>
@@ -270,6 +305,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                     setEditingCommitment(commitment)
                     setEditDialogOpen(true)
                   }}
+                  disabled={commitment.userId !== user?.id}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -277,6 +313,7 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
                   variant="ghost" 
                   size="icon"
                   onClick={() => handleDeleteCommitment(commitment.id)}
+                  disabled={commitment.userId !== user?.id}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

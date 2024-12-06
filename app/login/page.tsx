@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { useRouter } from 'next/navigation'
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabaseClient"
+import Image from "next/image"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -61,6 +62,15 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center space-y-6">
+          <div className="flex justify-center">
+            <Image
+              src="/zyrismainlogo.png"
+              alt="Zyris Logo"
+              width={150}
+              height={150}
+              priority
+            />
+          </div>
           <h1 className="text-3xl font-bold tracking-tight">
             Welcome to BiteSync
           </h1>
@@ -105,13 +115,15 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-          <Button
-            className="w-full"
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading ? "Signing in..." : "Sign In"}
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              className="w-48 bg-rose-500 hover:bg-rose-700"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? "Signing in..." : "Sign In"}
+            </Button>
+          </div>
         </form>
       </div>
     </div>

@@ -93,6 +93,7 @@ export interface Database {
           start_date: string | null
           end_date: string | null
           required_members: string | null
+          priority: string
         }
         Insert: {
           id?: string
@@ -105,6 +106,7 @@ export interface Database {
           start_date?: string | null
           end_date?: string | null
           required_members?: string | null
+          priority?: string
         }
         Update: {
           id?: string
@@ -117,6 +119,7 @@ export interface Database {
           start_date?: string | null
           end_date?: string | null
           required_members?: string | null
+          priority?: string
         }
       }
       commitments: {
@@ -160,6 +163,38 @@ export interface Database {
           end_time?: string | null
         }
       }
+      tasks: {
+        Row: {
+          id: string
+          project_id: string
+          title: string
+          assigned_to: string
+          duration: number
+          order_index: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          title: string
+          assigned_to: string
+          duration: number
+          order_index: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          title?: string
+          assigned_to?: string
+          duration?: number
+          order_index?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -170,5 +205,22 @@ export interface Database {
     Enums: {
       [_ in never]: never
     }
+  }
+}
+
+export interface Task {
+  id: string
+  project_id: string
+  title: string
+  assigned_to: string
+  duration: number
+  order_index: number
+  created_at: string
+  updated_at: string
+  projects?: {
+    name: string
+  }
+  assigned_user?: {
+    email: string
   }
 } 

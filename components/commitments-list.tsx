@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Pencil, Trash2 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useCommitments } from '@/hooks/use-commitments'
 import { useSupabase } from '@/components/providers/supabase-provider'
@@ -37,6 +37,8 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedCommitments, setSelectedCommitments] = useState<string[]>([])
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [selectedCommitment, setSelectedCommitment] = useState<Commitment | null>(null)
 
   useEffect(() => {
     if (!loading) {
@@ -264,6 +266,68 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
         </DialogContent>
       </Dialog>
 
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent aria-describedby="view-commitment-description">
+          <DialogHeader>
+            <DialogTitle>Commitment Details</DialogTitle>
+            <DialogDescription id="view-commitment-description">
+              View commitment information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Owner:</div>
+              <div className="col-span-2">{selectedCommitment?.owner}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Type:</div>
+              <div className="col-span-2">{selectedCommitment?.type}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Flexibility:</div>
+              <div className="col-span-2">{selectedCommitment?.flexibility}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Title:</div>
+              <div className="col-span-2">{selectedCommitment?.title}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Start:</div>
+              <div className="col-span-2">
+                {selectedCommitment?.startDate}
+                {selectedCommitment?.startTime && ` ${selectedCommitment.startTime}`}
+              </div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">End:</div>
+              <div className="col-span-2">
+                {selectedCommitment?.endDate}
+                {selectedCommitment?.endTime && ` ${selectedCommitment.endTime}`}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setEditingCommitment(selectedCommitment)
+                setViewDialogOpen(false)
+                setEditDialogOpen(true)
+              }}
+              disabled={selectedCommitment?.owner !== user?.email}
+            >
+              Edit Commitment
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => setViewDialogOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -284,7 +348,14 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
         </TableHeader>
         <TableBody>
           {commitments.map(commitment => (
-            <TableRow key={commitment.id}>
+            <TableRow 
+              key={commitment.id}
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => {
+                setSelectedCommitment(commitment)
+                setViewDialogOpen(true)
+              }}
+            >
               <TableCell>
                 <Checkbox 
                   checked={selectedCommitments.includes(commitment.id)}

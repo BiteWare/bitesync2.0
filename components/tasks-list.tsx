@@ -6,76 +6,80 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Pencil, Trash2 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
-
-interface Task {
-  id: string
-  project: string
-  title: string
-  assignedTo: string
-  duration: number
-  order: number
-}
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { useTasks } from "@/hooks/use-tasks"
+import { useProjects } from "@/hooks/use-projects"
+import { useSupabase } from "@/components/providers/supabase-provider"
+import type { Task } from "@/types/database.types"
 
 export function TasksList() {
-  const [tasks, setTasks] = useState<Task[]>([
-    { 
-      id: '1', 
-      project: 'website', 
-      title: 'Design System', 
-      assignedTo: 'jack', 
-      duration: 8, 
-      order: 1 
-    }
-  ])
+  const { user } = useSupabase()
+  const { tasks, loading, createTask, updateTask, deleteTask } = useTasks()
+  const { projects } = useProjects()
+  
   const [newTask, setNewTask] = useState<Partial<Task>>({
-    project: '',
+    project_id: '',
     title: '',
-    assignedTo: '',
+    assigned_to: '',
     duration: 0,
-    order: 0
+    order_index: 0
   })
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
-  const handleAddTask = () => {
-    console.log('New Task:', newTask) // For debugging
-    if (newTask.project && newTask.title && newTask.assignedTo && newTask.duration && newTask.order) {
-      const task: Task = {
-        id: Date.now().toString(),
-        project: newTask.project,
-        title: newTask.title,
-        assignedTo: newTask.assignedTo,
-        duration: Number(newTask.duration),
-        order: Number(newTask.order)
+  const handleAddTask = async () => {
+    console.log('Add task clicked', { newTask, user })
+    if (newTask.project_id && newTask.title && user?.id) {
+      try {
+        const taskData = {
+          project_id: newTask.project_id,
+          title: newTask.title,
+          assigned_to: user.id,
+          duration: Number(newTask.duration) || 0,
+          order_index: Number(newTask.order_index) || 0
+        }
+        
+        console.log('Submitting task:', taskData)
+        
+        await createTask(taskData)
+        
+        setNewTask({
+          project_id: '',
+          title: '',
+          assigned_to: '',
+          duration: 0,
+          order_index: 0
+        })
+        setAddDialogOpen(false)
+      } catch (error) {
+        console.error('Error in handleAddTask:', error)
       }
-      setTasks(prev => [...prev, task])
-      setNewTask({
-        project: '',
-        title: '',
-        assignedTo: '',
-        duration: 0,
-        order: 0
-      })
-      setAddDialogOpen(false)
     } else {
-      console.log('Missing required fields') // For debugging
+      console.log('Validation failed:', { 
+        project_id: newTask.project_id, 
+        title: newTask.title, 
+        user_id: user?.id 
+      })
     }
   }
 
-  const handleEditTask = () => {
+  const handleEditTask = async () => {
     if (editingTask) {
-      setTasks(prev => prev.map(task => 
-        task.id === editingTask.id ? editingTask : task
-      ))
+      await updateTask(editingTask.id, editingTask)
       setEditingTask(null)
       setEditDialogOpen(false)
     }
   }
 
-  const handleDeleteTask = (id: string) => {
-    setTasks(prev => prev.filter(task => task.id !== id))
+  const handleDeleteTask = async (id: string) => {
+    await deleteTask(id)
+  }
+
+  if (loading) {
+    return <div>Loading...</div>
   }
 
   return (
@@ -87,18 +91,27 @@ export function TasksList() {
             Add Task
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent aria-describedby="add-task-description">
           <DialogHeader>
             <DialogTitle>Add New Task</DialogTitle>
+            <DialogDescription id="add-task-description">
+              Fill in the details to create a new task.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <Select onValueChange={(value) => setNewTask({ ...newTask, project: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Project" />
+            <Select 
+              value={newTask.project_id} 
+              onValueChange={(value) => setNewTask({ ...newTask, project_id: value })}
+            >
+              <SelectTrigger aria-label="Select Project">
+                <SelectValue placeholder="Select Project" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="website">Website Redesign</SelectItem>
-                <SelectItem value="mobile">Mobile App</SelectItem>
+                {projects.map(project => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Input 
@@ -106,27 +119,29 @@ export function TasksList() {
               placeholder="Task Title"
               value={newTask.title || ''}
               onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+              aria-label="Task Title"
             />
-            <Select onValueChange={(value) => setNewTask({ ...newTask, assignedTo: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Assigned To" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="jack">Jack Horton</SelectItem>
-                <SelectItem value="sarah">Sarah Smith</SelectItem>
-              </SelectContent>
-            </Select>
+            <textarea
+              className="flex h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Assigned To"
+              value={newTask.assigned_to || ''}
+              onChange={(e) => setNewTask({ ...newTask, assigned_to: e.target.value })}
+              aria-label="Assigned To"
+              rows={2}
+            />
             <Input 
               type="number" 
               placeholder="Duration (hours)"
               value={newTask.duration || ''}
               onChange={(e) => setNewTask({ ...newTask, duration: Number(e.target.value) })}
+              aria-label="Duration"
             />
             <Input 
               type="number" 
               placeholder="Order"
-              value={newTask.order || ''}
-              onChange={(e) => setNewTask({ ...newTask, order: Number(e.target.value) })}
+              value={newTask.order_index || ''}
+              onChange={(e) => setNewTask({ ...newTask, order_index: Number(e.target.value) })}
+              aria-label="Order"
             />
           </div>
           <DialogFooter>
@@ -136,21 +151,27 @@ export function TasksList() {
       </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="edit-task-description">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription id="edit-task-description">
+              Modify the task details below.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <Select 
-              value={editingTask?.project} 
-              onValueChange={(value) => setEditingTask(prev => prev ? {...prev, project: value} : null)}
+              value={editingTask?.project_id} 
+              onValueChange={(value) => setEditingTask(prev => prev ? {...prev, project_id: value} : null)}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Project" />
+              <SelectTrigger aria-label="Select Project">
+                <SelectValue placeholder="Select Project" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="website">Website Redesign</SelectItem>
-                <SelectItem value="mobile">Mobile App</SelectItem>
+                {projects.map(project => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Input 
@@ -158,34 +179,84 @@ export function TasksList() {
               placeholder="Task Title"
               value={editingTask?.title || ''}
               onChange={(e) => setEditingTask(prev => prev ? {...prev, title: e.target.value} : null)}
+              aria-label="Task Title"
             />
-            <Select 
-              value={editingTask?.assignedTo}
-              onValueChange={(value) => setEditingTask(prev => prev ? {...prev, assignedTo: value} : null)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Assigned To" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="jack">Jack Horton</SelectItem>
-                <SelectItem value="sarah">Sarah Smith</SelectItem>
-              </SelectContent>
-            </Select>
+            <textarea
+              className="flex h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Assigned To (email addresses)"
+              value={editingTask?.assigned_to || ''}
+              onChange={(e) => setEditingTask(prev => prev ? {...prev, assigned_to: e.target.value} : null)}
+              aria-label="Assigned To"
+              rows={2}
+            />
             <Input 
               type="number" 
               placeholder="Duration (hours)"
               value={editingTask?.duration || ''}
               onChange={(e) => setEditingTask(prev => prev ? {...prev, duration: Number(e.target.value)} : null)}
+              aria-label="Duration"
             />
             <Input 
               type="number" 
               placeholder="Order"
-              value={editingTask?.order || ''}
-              onChange={(e) => setEditingTask(prev => prev ? {...prev, order: Number(e.target.value)} : null)}
+              value={editingTask?.order_index || ''}
+              onChange={(e) => setEditingTask(prev => prev ? {...prev, order_index: Number(e.target.value)} : null)}
+              aria-label="Order"
             />
           </div>
           <DialogFooter>
             <Button onClick={handleEditTask}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent aria-describedby="view-task-description">
+          <DialogHeader>
+            <DialogTitle>Task Details</DialogTitle>
+            <DialogDescription id="view-task-description">
+              View task information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Project:</div>
+              <div className="col-span-2">{(selectedTask as any)?.projects?.name || 'Unknown Project'}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Title:</div>
+              <div className="col-span-2">{selectedTask?.title}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Assigned To:</div>
+              <div className="col-span-2">{selectedTask?.assigned_to}</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Duration:</div>
+              <div className="col-span-2">{selectedTask?.duration} hours</div>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <div className="font-semibold">Order:</div>
+              <div className="col-span-2">{selectedTask?.order_index}</div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setEditingTask(selectedTask)
+                setViewDialogOpen(false)
+                setEditDialogOpen(true)
+              }}
+            >
+              Edit Task
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => setViewDialogOpen(false)}
+            >
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -203,17 +274,25 @@ export function TasksList() {
         </TableHeader>
         <TableBody>
           {tasks.map(task => (
-            <TableRow key={task.id}>
-              <TableCell>{task.project}</TableCell>
+            <TableRow 
+              key={task.id}
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => {
+                setSelectedTask(task)
+                setViewDialogOpen(true)
+              }}
+            >
+              <TableCell>{(task as any).projects?.name || 'Unknown Project'}</TableCell>
               <TableCell>{task.title}</TableCell>
-              <TableCell>{task.assignedTo}</TableCell>
+              <TableCell>{(task as any).assigned_user?.email || 'Unassigned'}</TableCell>
               <TableCell>{task.duration} hours</TableCell>
-              <TableCell>{task.order}</TableCell>
+              <TableCell>{task.order_index}</TableCell>
               <TableCell className="flex gap-2">
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     setEditingTask(task)
                     setEditDialogOpen(true)
                   }}
@@ -223,7 +302,10 @@ export function TasksList() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => handleDeleteTask(task.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteTask(task.id)
+                  }}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

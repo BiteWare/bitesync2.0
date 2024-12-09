@@ -53,52 +53,56 @@ export function useCommitments() {
     }
   }
 
-  async function addCommitment(commitment: Omit<Commitment, 'id' | 'owner'>) {
+  async function addCommitment(commitment: Omit<Commitment, 'id'>) {
     if (!user?.id || !user?.email) return
 
     try {
+      const dbCommitment = {
+        user_id: user.id,
+        owner: user.email,
+        type: commitment.type || 'holidays',
+        flexibility: commitment.flexibility || 'firm',
+        title: commitment.title,
+        start_date: new Date(commitment.startDate).toISOString().split('T')[0],
+        end_date: new Date(commitment.endDate).toISOString().split('T')[0],
+        start_time: commitment.startTime || null,
+        end_time: commitment.endTime || null
+      }
+
       const { data, error } = await supabase
         .from('commitments')
-        .insert({
-          user_id: user.id,
-          owner: user.email,
-          type: commitment.type,
-          flexibility: commitment.flexibility,
-          title: commitment.title,
-          start_date: commitment.startDate,
-          end_date: commitment.endDate,
-          start_time: commitment.startTime,
-          end_time: commitment.endTime
-        })
+        .insert(dbCommitment)
         .select()
-        .single() as { data: DbCommitment, error: null } | { data: null, error: any }
+        .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
+
+      if (!data) {
+        throw new Error('No data returned from insert')
+      }
 
       const newCommitment: Commitment = {
-        id: (data as DbCommitment).id,
-        owner: (data as DbCommitment).owner,
-        type: (data as DbCommitment).type,
-        flexibility: (data as DbCommitment).flexibility,
-        title: (data as DbCommitment).title,
-        startDate: (data as DbCommitment).start_date,
-        endDate: (data as DbCommitment).end_date,
-        startTime: (data as DbCommitment).start_time,
-        endTime: (data as DbCommitment).end_time
+        id: data.id,
+        owner: user.email,
+        type: data.type,
+        flexibility: data.flexibility,
+        title: data.title,
+        startDate: data.start_date,
+        endDate: data.end_date,
+        startTime: data.start_time,
+        endTime: data.end_time
       }
 
       setCommitments(prev => [...prev, newCommitment])
 
-      toast({
-        title: "Success",
-        description: "Commitment added successfully"
-      })
+      return newCommitment
+
     } catch (error) {
-      toast({
-        title: "Error adding commitment",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive"
-      })
+      console.error('Error details:', error)
+      throw error
     }
   }
 

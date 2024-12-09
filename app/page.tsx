@@ -1,20 +1,20 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { UserProfile } from "@/components/user-profile"
-import { CommitmentsList } from "@/components/commitments-list"
-import { Commitment } from "@/types/custom"
-import { ProjectsList } from "@/components/projects-list"
-import { TasksList } from "@/components/tasks-list"
 import { Users, Upload, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CollapsibleCard } from "@/components/ui/collapsible-card"
+import { UserProfile } from "@/components/user-profile"
+import { CommitmentsList } from "@/components/commitments-list"
+import { ProjectsList } from "@/components/projects-list"
+import { TasksList } from "@/components/tasks-list"
 import { BulkImportButton } from "@/components/bulk-import-button"
-import { useState } from "react"
 import { useSupabase } from "@/components/providers/supabase-provider"
+import { useCommitments } from "@/hooks/use-commitments"
+import type { Commitment } from "@/types/custom"
 
 export default function Home() {
-  const [commitments, setCommitments] = useState<Commitment[]>([])
   const { user, signOut } = useSupabase()
+  const { commitments, addCommitment } = useCommitments()
 
   return (
     <div className="space-y-8">
@@ -32,54 +32,48 @@ export default function Home() {
       </div>
 
       <div className="grid gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Users & Availability</CardTitle>
-            <Button variant="outline" size="sm">
-              <Upload className="h-4 w-4 mr-2" />
-              Import Users
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <UserProfile />
-          </CardContent>
-        </Card>
+        <CollapsibleCard title="Users & Availability">
+          <UserProfile />
+        </CollapsibleCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Commitments</CardTitle>
+        <CollapsibleCard 
+          title="Commitments"
+          headerContent={
             <BulkImportButton 
-              onImport={(importedCommitments) => {
-                const newCommitments = importedCommitments.map(commitment => ({
-                  ...commitment,
-                  id: Date.now().toString(),
-                })) as Commitment[];
-                setCommitments(prev => [...prev, ...newCommitments]);
+              onImport={async (importedCommitments) => {
+                try {
+                  console.log('Starting import of commitments:', importedCommitments)
+                  
+                  for (const commitment of importedCommitments) {
+                    // Ensure all required fields are present
+                    const formattedCommitment = {
+                      ...commitment,
+                      owner: user?.email || '',
+                      type: commitment.type || 'holidays',
+                      flexibility: commitment.flexibility || 'firm',
+                      startDate: commitment.startDate || new Date().toISOString().split('T')[0],
+                      endDate: commitment.endDate || new Date().toISOString().split('T')[0]
+                    }
+                    
+                    await addCommitment(formattedCommitment)
+                  }
+                } catch (error) {
+                  console.error('Import error:', error)
+                }
               }}
             />
-          </CardHeader>
-          <CardContent>
-            <CommitmentsList onImport={setCommitments} />
-          </CardContent>
-        </Card>
+          }
+        >
+          <CommitmentsList />
+        </CollapsibleCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ProjectsList />
-          </CardContent>
-        </Card>
+        <CollapsibleCard title="Projects">
+          <ProjectsList />
+        </CollapsibleCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Project Tasks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TasksList />
-          </CardContent>
-        </Card>
+        <CollapsibleCard title="Tasks">
+          <TasksList />
+        </CollapsibleCard>
       </div>
     </div>
   )

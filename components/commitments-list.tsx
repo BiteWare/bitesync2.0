@@ -12,7 +12,7 @@ import { useCommitments } from '@/hooks/use-commitments'
 import { useSupabase } from '@/components/providers/supabase-provider'
 import { Commitment } from '@/types/custom'
 
-export function CommitmentsList({ onImport }: { onImport: (commitments: Commitment[]) => void }) {
+export function CommitmentsList() {
   const { user } = useSupabase()
   const { 
     commitments, 
@@ -39,12 +39,6 @@ export function CommitmentsList({ onImport }: { onImport: (commitments: Commitme
   const [selectedCommitments, setSelectedCommitments] = useState<string[]>([])
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedCommitment, setSelectedCommitment] = useState<Commitment | null>(null)
-
-  useEffect(() => {
-    if (!loading) {
-      onImport(commitments)
-    }
-  }, [commitments, loading])
 
   useEffect(() => {
     if (user?.id && !newCommitment.owner) {

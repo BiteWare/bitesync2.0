@@ -24,7 +24,6 @@ export function CommitmentsList() {
   } = useCommitments()
   
   const [newCommitment, setNewCommitment] = useState<Partial<Commitment>>({
-    owner: user?.email || '',
     type: 'holidays',
     flexibility: 'firm',
     title: '',
@@ -115,8 +114,8 @@ export function CommitmentsList() {
               <Input 
                 type="text" 
                 placeholder="Owner"
-                value={newCommitment.owner}
-                disabled
+                value={newCommitment.owner || ''}
+                onChange={(e) => setNewCommitment({ ...newCommitment, owner: e.target.value })}
               />
               <Select 
                 defaultValue="holidays"
@@ -210,7 +209,7 @@ export function CommitmentsList() {
               type="text" 
               placeholder="Owner"
               value={editingCommitment?.owner || ''}
-              disabled
+              onChange={(e) => setEditingCommitment(prev => prev ? {...prev, owner: e.target.value} : null)}
             />
             <Select 
               value={editingCommitment?.type}

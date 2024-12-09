@@ -36,8 +36,11 @@ export function useProjects() {
     start_date?: string | null;
     end_date?: string | null;
     required_members?: string | null;
+    priority?: string;
   }) {
     try {
+      console.log('Creating project with data:', project);
+
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError) throw authError
       if (!user) throw new Error('No authenticated user found')
@@ -53,10 +56,11 @@ export function useProjects() {
         updated_at: now,
         start_date: project.start_date || null,
         end_date: project.end_date || null,
-        required_members: project.required_members || null
+        required_members: project.required_members || null,
+        priority: project.priority || '10'
       }
 
-      console.log('Creating project with data:', newProject)
+      console.log('Formatted project data:', newProject);
 
       const { data, error } = await supabase
         .from('projects')
@@ -65,7 +69,7 @@ export function useProjects() {
         .single()
 
       if (error) {
-        console.error('Supabase error:', error)
+        console.error('Supabase error:', error);
         throw error
       }
       
@@ -76,12 +80,7 @@ export function useProjects() {
       })
       return data
     } catch (error) {
-      console.error('Detailed error:', error)
-      toast({
-        title: "Error creating project",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      })
+      console.error('Detailed error:', error);
       throw error
     }
   }

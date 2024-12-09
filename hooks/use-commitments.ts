@@ -54,12 +54,12 @@ export function useCommitments() {
   }
 
   async function addCommitment(commitment: Omit<Commitment, 'id'>) {
-    if (!user?.id || !user?.email) return
+    if (!user?.id) return
 
     try {
       const dbCommitment = {
         user_id: user.id,
-        owner: user.email,
+        owner: commitment.owner || user?.email || '',
         type: commitment.type || 'holidays',
         flexibility: commitment.flexibility || 'firm',
         title: commitment.title,
@@ -86,7 +86,7 @@ export function useCommitments() {
 
       const newCommitment: Commitment = {
         id: data.id,
-        owner: user.email,
+        owner: (data as DbCommitment & { owner: string }).owner,
         type: data.type,
         flexibility: data.flexibility,
         title: data.title,
@@ -107,14 +107,13 @@ export function useCommitments() {
   }
 
   async function updateCommitment(commitment: Commitment) {
-    try {
-      if (commitment.owner !== user?.email) {
-        throw new Error("You can only edit your own commitments")
-      }
+    if (!user?.id) return
 
+    try {
       const { error } = await supabase
         .from('commitments')
         .update({
+          owner: commitment.owner,
           type: commitment.type,
           flexibility: commitment.flexibility,
           title: commitment.title,
@@ -149,11 +148,6 @@ export function useCommitments() {
     if (!user?.id) return
     
     try {
-      const commitment = commitments.find(c => c.id === id)
-      if (commitment?.owner !== user.email) {
-        throw new Error("You can only delete your own commitments")
-      }
-
       const { error } = await supabase
         .from('commitments')
         .delete()
@@ -181,11 +175,6 @@ export function useCommitments() {
     if (!user?.id) return
     
     try {
-      const selectedCommitments = commitments.filter(c => ids.includes(c.id))
-      if (!selectedCommitments.every(c => c.owner === user.email)) {
-        throw new Error("You can only delete your own commitments")
-      }
-
       const { error } = await supabase
         .from('commitments')
         .delete()

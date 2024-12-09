@@ -27,6 +27,7 @@ export function BulkImportButton({ onImport }: BulkImportButtonProps) {
 
   const transformData = (data: any, mapping: { [key: string]: string }) => {
     return {
+      owner: data.owner || user?.email || '',
       title: data.title || 'Untitled',
       type: data.type || 'holidays',
       flexibility: data.flexibility || 'firm',

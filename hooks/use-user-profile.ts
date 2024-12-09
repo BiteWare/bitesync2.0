@@ -1,76 +1,63 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { UserProfile, UserProfileUpdate } from '@/types/user.types'
+import { UserProfileType, UserProfileUpdate } from '@/types/user.types'
 import { useToast } from '@/hooks/use-toast'
 
+type DatabaseUser = {
+  id: string
+  auth_id: string
+  email: string
+  full_name: string | null
+  primary_role: string | null
+  team: string | null
+  timezone: string | null
+  work_start: string | null
+  work_end: string | null
+  working_days?: string[]
+  created_at: string
+  updated_at: string
+}
+
 export function useUserProfile() {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profiles, setProfiles] = useState<UserProfileType[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
-    fetchProfile()
+    fetchProfiles()
   }, [])
 
-  const fetchProfile = async () => {
+  const fetchProfiles = async () => {
     try {
-      // Get the current authenticated user
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError) throw authError
-      if (!user) throw new Error('No authenticated user found')
-
-      // Try to fetch the user's profile
       const { data, error } = await supabase
         .from('users')
-        .select('*')
-        .eq('auth_id', user.id)
-        .single()
+        .select('*') as { data: DatabaseUser[] | null, error: any }
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // Profile doesn't exist, create it
-          const { data: newProfile, error: createError } = await supabase
-            .from('users')
-            .insert([
-              {
-                auth_id: user.id,
-                user_id: user.id,
-                email: user.email || '',
-                full_name: user.user_metadata?.full_name || null,
-                primary_role: 'developer',
-                team: 'engineering',
-                timezone: 'pt',
-                work_start: '09:00',
-                work_end: '17:00',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }
-            ])
-            .select()
-            .single()
+      if (error) throw error
 
-          if (createError) {
-            console.error('Error creating profile:', createError)
-            throw createError
-          }
-          
-          setProfile(newProfile as UserProfile)
-          return
-        }
-        throw error
-      }
+      if (!data) return setProfiles([])
 
-      setProfile(data as UserProfile)
+      const transformedData = data.map(profile => ({
+        ...profile,
+        user_id: profile.id,
+        working_days: profile.working_days || [],
+        primary_role: (profile.primary_role as UserProfileType['primary_role']) || 'developer',
+        team: (profile.team as UserProfileType['team']) || 'engineering',
+        timezone: profile.timezone || 'pt',
+        work_start: profile.work_start || '09:00',
+        work_end: profile.work_end || '17:00'
+      })) as UserProfileType[]
+
+      setProfiles(transformedData)
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      console.error('Error fetching profiles:', error)
       throw error
     } finally {
       setLoading(false)
     }
   }
 
-  const updateProfile = async (updates: UserProfileUpdate) => {
+  const addProfile = async (profile: UserProfileUpdate) => {
     try {
       setLoading(true)
       const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -78,17 +65,51 @@ export function useUserProfile() {
       if (authError) throw authError
       if (!user) throw new Error('No authenticated user found')
 
+      // Match the exact database schema
+      const { error } = await supabase
+        .from('users')
+        .insert({
+          // Don't include id (it's auto-generated)
+          auth_id: user.id,  // Use authenticated user's ID
+          email: profile.full_name + '@example.com', // Generate unique email
+          full_name: profile.full_name,
+          primary_role: profile.primary_role,
+          team: profile.team,
+          timezone: profile.timezone,
+          work_start: profile.work_start,
+          work_end: profile.work_end,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+
+      if (error) {
+        console.error('Insert error:', error)
+        throw error
+      }
+
+      await fetchProfiles()
+    } catch (error) {
+      console.error('Error adding profile:', error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateProfile = async (userId: string, updates: UserProfileUpdate) => {
+    try {
+      setLoading(true)
       const { error } = await supabase
         .from('users')
         .update({
           ...updates,
           updated_at: new Date().toISOString()
         })
-        .eq('auth_id', user.id)
+        .eq('user_id', userId)
 
       if (error) throw error
 
-      await fetchProfile()
+      await fetchProfiles()
     } catch (error) {
       console.error('Error updating profile:', error)
       throw error
@@ -97,10 +118,34 @@ export function useUserProfile() {
     }
   }
 
+  const deleteProfile = async (userId: string) => {
+    try {
+      setLoading(true)
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId)
+
+      if (error) {
+        console.error('Delete error:', error)
+        throw error
+      }
+
+      await fetchProfiles()
+    } catch (error) {
+      console.error('Error deleting profile:', error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return {
-    profile,
+    profiles,
     loading,
+    addProfile,
     updateProfile,
-    refreshProfile: fetchProfile,
+    deleteProfile,
+    refreshProfiles: fetchProfiles,
   }
 } 

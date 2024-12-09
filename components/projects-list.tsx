@@ -12,11 +12,18 @@ import { useSupabase } from "@/components/providers/supabase-provider"
 import type { Project } from "@/types/database.types"
 import { Badge } from "@/components/ui/badge"
 
-const PRIORITY_COLORS = {
-  High: "bg-red-100 text-red-800 hover:bg-red-200",
-  Medium: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-  Low: "bg-green-100 text-green-800 hover:bg-green-200"
-} as const;
+const getPriorityColor = (priority: string | undefined) => {
+  const priorityNum = parseInt(priority || '0');
+  if (isNaN(priorityNum)) return "bg-gray-100 text-gray-800 hover:bg-gray-200";
+
+  if (priorityNum <= 7) {
+    return "bg-red-100 text-red-800 hover:bg-red-200";
+  } else if (priorityNum <= 14) {
+    return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
+  } else {
+    return "bg-green-100 text-green-800 hover:bg-green-200";
+  }
+};
 
 export function ProjectsList() {
   const { user } = useSupabase()
@@ -29,7 +36,7 @@ export function ProjectsList() {
     start_date: null,
     end_date: null,
     required_members: null,
-    priority: 'Medium'
+    priority: '10'
   })
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -40,6 +47,8 @@ export function ProjectsList() {
   const handleAddProject = async () => {
     if (newProject.name && user?.id) {
       try {
+        console.log('Submitting project:', newProject); // Debug log
+        
         await createProject({
           name: newProject.name,
           owner_id: user.id,
@@ -47,7 +56,7 @@ export function ProjectsList() {
           ...(newProject.start_date ? { start_date: newProject.start_date } : {}),
           ...(newProject.end_date ? { end_date: newProject.end_date } : {}),
           ...(newProject.required_members ? { required_members: newProject.required_members } : {}),
-          ...(newProject.priority ? { priority: newProject.priority } : {})
+          priority: newProject.priority || '10' // Ensure priority is set and is a string number
         })
         
         setNewProject({
@@ -57,7 +66,7 @@ export function ProjectsList() {
           start_date: null,
           end_date: null,
           required_members: null,
-          priority: 'Medium'
+          priority: '10'
         })
         setAddDialogOpen(false)
       } catch (error) {
@@ -140,25 +149,21 @@ export function ProjectsList() {
             />
             <div className="space-y-2">
               <label className="text-sm font-medium">Priority</label>
-              <Select
-                value={newProject.priority}
-                onValueChange={(value) => setNewProject({ ...newProject, priority: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(PRIORITY_COLORS).map((priority) => (
-                    <SelectItem key={priority} value={priority}>
-                      <div className="flex items-center gap-2">
-                        <Badge className={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS]}>
-                          {priority}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input 
+                type="number"
+                min="1"
+                max="20"
+                placeholder="Enter priority"
+                value={newProject.priority || ''}
+                className={getPriorityColor(newProject.priority)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const num = parseInt(value);
+                  if (!value || (num >= 1 && num <= 20)) {
+                    setNewProject({ ...newProject, priority: value });
+                  }
+                }}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -217,25 +222,21 @@ export function ProjectsList() {
             />
             <div className="space-y-2">
               <label className="text-sm font-medium">Priority</label>
-              <Select
-                value={editingProject?.priority}
-                onValueChange={(value) => setEditingProject(prev => prev ? {...prev, priority: value} : null)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(PRIORITY_COLORS).map((priority) => (
-                    <SelectItem key={priority} value={priority}>
-                      <div className="flex items-center gap-2">
-                        <Badge className={PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS]}>
-                          {priority}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input 
+                type="number"
+                min="1"
+                max="20"
+                placeholder="Enter priority"
+                value={editingProject?.priority || ''}
+                className={getPriorityColor(editingProject?.priority || '')}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const num = parseInt(value);
+                  if (!value || (num >= 1 && num <= 20)) {
+                    setEditingProject(prev => prev ? {...prev, priority: value} : null);
+                  }
+                }}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -265,7 +266,7 @@ export function ProjectsList() {
               <div className="font-semibold">Priority:</div>
               <div className="col-span-2">
                 {selectedProject?.priority && (
-                  <Badge className={PRIORITY_COLORS[selectedProject.priority as keyof typeof PRIORITY_COLORS]}>
+                  <Badge className={getPriorityColor(selectedProject.priority)}>
                     {selectedProject.priority}
                   </Badge>
                 )}
@@ -336,7 +337,7 @@ export function ProjectsList() {
               <TableCell>{project.owner_email}</TableCell>
               <TableCell>{project.name}</TableCell>
               <TableCell>
-                <Badge className={PRIORITY_COLORS[project.priority as keyof typeof PRIORITY_COLORS]}>
+                <Badge className={getPriorityColor(project.priority)}>
                   {project.priority}
                 </Badge>
               </TableCell>
@@ -348,9 +349,10 @@ export function ProjectsList() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => {
-                    setEditingProject(project)
-                    setEditDialogOpen(true)
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingProject(project);
+                    setEditDialogOpen(true);
                   }}
                   disabled={project.owner_id !== user?.id}
                 >
@@ -359,7 +361,10 @@ export function ProjectsList() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => handleDeleteProject(project.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteProject(project.id);
+                  }}
                   disabled={project.owner_id !== user?.id}
                 >
                   <Trash2 className="h-4 w-4" />

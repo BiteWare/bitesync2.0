@@ -47,19 +47,29 @@ export function CommitmentsList() {
 
   const handleAddCommitment = async () => {
     if (newCommitment.type && newCommitment.flexibility && newCommitment.title && 
-        newCommitment.startDate && newCommitment.endDate) {
-      await addCommitment(newCommitment as Omit<Commitment, 'id'>)
-      setNewCommitment({
-        owner: user?.email || '',
-        type: 'holidays',
-        flexibility: 'firm',
-        title: '',
-        startDate: '',
-        endDate: '',
-        startTime: '',
-        endTime: ''
-      })
-      setAddDialogOpen(false)
+        newCommitment.startDate && newCommitment.endDate && user?.id) {
+      try {
+        await addCommitment({
+          ...newCommitment,
+          user_id: user.id,
+          owner: user.email || '',
+          auth_id: user.id
+        } as Omit<Commitment, 'id'>)
+        
+        setNewCommitment({
+          owner: user?.email || '',
+          type: 'holidays',
+          flexibility: 'firm',
+          title: '',
+          startDate: '',
+          endDate: '',
+          startTime: '',
+          endTime: ''
+        })
+        setAddDialogOpen(false)
+      } catch (error) {
+        console.error('Error adding commitment:', error)
+      }
     }
   }
 

@@ -47,16 +47,15 @@ export function ProjectsList() {
   const handleAddProject = async () => {
     if (newProject.name && user?.id) {
       try {
-        console.log('Submitting project:', newProject); // Debug log
-        
         await createProject({
           name: newProject.name,
+          description: newProject.description || undefined,
+          start_date: newProject.start_date || undefined,
+          end_date: newProject.end_date || undefined,
+          required_members: newProject.required_members || undefined,
+          priority: newProject.priority || '10',
           owner_id: user.id,
-          ...(newProject.description ? { description: newProject.description } : {}),
-          ...(newProject.start_date ? { start_date: newProject.start_date } : {}),
-          ...(newProject.end_date ? { end_date: newProject.end_date } : {}),
-          ...(newProject.required_members ? { required_members: newProject.required_members } : {}),
-          priority: newProject.priority || '10' // Ensure priority is set and is a string number
+          owner_email: user.email || ''
         })
         
         setNewProject({

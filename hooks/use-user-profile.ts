@@ -29,9 +29,15 @@ export function useUserProfile() {
 
   const fetchProfiles = async () => {
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) throw authError
+      if (!user) return setProfiles([])
+
       const { data, error } = await supabase
         .from('users')
-        .select('*') as { data: DatabaseUser[] | null, error: any }
+        .select('*')
+        .eq('auth_id', user.id) as { data: DatabaseUser[] | null, error: any }
 
       if (error) throw error
 
@@ -64,28 +70,37 @@ export function useUserProfile() {
       
       if (authError) throw authError
       if (!user) throw new Error('No authenticated user found')
+      if (!user.email) throw new Error('User email is required')
 
-      // Match the exact database schema
-      const { error } = await supabase
+      console.log('Current user:', user)
+
+      const newProfile = {
+        auth_id: user.id,
+        email: user.email,
+        full_name: profile.full_name || '',
+        primary_role: profile.primary_role || 'developer',
+        team: profile.team || 'engineering',
+        timezone: profile.timezone || 'pt',
+        work_start: profile.work_start || '09:00',
+        work_end: profile.work_end || '17:00',
+        working_days: profile.working_days || [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      console.log('Inserting profile:', newProfile)
+
+      const { data, error } = await supabase
         .from('users')
-        .insert({
-          // Don't include id (it's auto-generated)
-          auth_id: user.id,  // Use authenticated user's ID
-          email: profile.full_name + '@example.com', // Generate unique email
-          full_name: profile.full_name,
-          primary_role: profile.primary_role,
-          team: profile.team,
-          timezone: profile.timezone,
-          work_start: profile.work_start,
-          work_end: profile.work_end,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .insert(newProfile)
+        .select()
 
       if (error) {
         console.error('Insert error:', error)
         throw error
       }
+
+      console.log('Insert response:', data)
 
       await fetchProfiles()
     } catch (error) {

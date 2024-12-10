@@ -19,20 +19,22 @@ export function useCommitments() {
   }, [user?.id])
 
   async function fetchCommitments() {
-    if (!user?.id) return
-    
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) throw authError
+      if (!user) return setCommitments([])
+
       const { data, error } = await supabase
         .from('commitments')
         .select('*')
-        .eq('user_id', user.id)
-        .order('start_date', { ascending: true })
+        .eq('auth_id', user.id)
 
       if (error) throw error
-      
-      setCommitments((data as DbCommitment[]).map(item => ({
+
+      const transformedData: Commitment[] = (data || []).map(item => ({
         id: item.id,
-        owner: item.owner,
+        owner: user.email || '',
         type: item.type,
         flexibility: item.flexibility,
         title: item.title,
@@ -40,68 +42,55 @@ export function useCommitments() {
         endDate: item.end_date,
         startTime: item.start_time,
         endTime: item.end_time
-      })))
+      }))
+
+      setCommitments(transformedData)
     } catch (error) {
       console.error('Error fetching commitments:', error)
-      toast({
-        title: "Error fetching commitments",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
+      throw error
     }
   }
 
   async function addCommitment(commitment: Omit<Commitment, 'id'>) {
-    if (!user?.id) return
-
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw authError
+      if (!user) throw new Error('No authenticated user found')
+
       const dbCommitment = {
         user_id: user.id,
-        owner: commitment.owner || user?.email || '',
-        type: commitment.type || 'holidays',
-        flexibility: commitment.flexibility || 'firm',
+        auth_id: user.id,
+        owner: commitment.owner || user.email || '',
+        type: commitment.type,
+        flexibility: commitment.flexibility,
         title: commitment.title,
-        start_date: new Date(commitment.startDate).toISOString().split('T')[0],
-        end_date: new Date(commitment.endDate).toISOString().split('T')[0],
-        start_time: commitment.startTime || null,
-        end_time: commitment.endTime || null
+        start_date: commitment.startDate,
+        end_date: commitment.endDate,
+        start_time: commitment.startTime,
+        end_time: commitment.endTime,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('commitments')
         .insert(dbCommitment)
-        .select()
-        .single()
 
-      if (error) {
-        console.error('Supabase error:', error)
-        throw error
-      }
+      if (error) throw error
 
-      if (!data) {
-        throw new Error('No data returned from insert')
-      }
+      await fetchCommitments()
 
-      const newCommitment: Commitment = {
-        id: data.id,
-        owner: (data as DbCommitment & { owner: string }).owner,
-        type: data.type,
-        flexibility: data.flexibility,
-        title: data.title,
-        startDate: data.start_date,
-        endDate: data.end_date,
-        startTime: data.start_time,
-        endTime: data.end_time
-      }
-
-      setCommitments(prev => [...prev, newCommitment])
-
-      return newCommitment
-
+      toast({
+        title: "Success",
+        description: "Commitment created successfully"
+      })
     } catch (error) {
-      console.error('Error details:', error)
+      console.error('Error adding commitment:', error)
+      toast({
+        title: "Error creating commitment",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive"
+      })
       throw error
     }
   }

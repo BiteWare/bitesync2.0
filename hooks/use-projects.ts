@@ -2,23 +2,41 @@ import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import type { Project } from '@/types/database.types'
+import { useSupabase } from '@/components/providers/supabase-provider'
+
+type ProjectCreate = {
+  name: string
+  description?: string
+  start_date?: string
+  end_date?: string
+  required_members?: string
+  priority?: string
+  owner_id?: string
+  owner_email?: string
+}
 
 export function useProjects() {
+  const { user, session } = useSupabase()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   async function fetchProjects() {
     try {
-      setLoading(true)
+      if (!session || !user?.id) {
+        setProjects([])
+        return
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .order('created_at', { ascending: false })
+        .eq('owner_id', user.id)
 
       if (error) throw error
       setProjects(data || [])
     } catch (error) {
+      console.error('Error fetching projects:', error)
       toast({
         title: "Error fetching projects",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -29,58 +47,37 @@ export function useProjects() {
     }
   }
 
-  async function createProject(project: { 
-    name: string; 
-    owner_id: string; 
-    description?: string | null;
-    start_date?: string | null;
-    end_date?: string | null;
-    required_members?: string | null;
-    priority?: string;
-  }) {
+  const addProject = async (project: ProjectCreate) => {
     try {
-      console.log('Creating project with data:', project);
-
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError) throw authError
       if (!user) throw new Error('No authenticated user found')
 
-      const now = new Date().toISOString()
-      
-      const newProject = {
-        name: project.name,
-        owner_id: user.id,
-        owner_email: user.email || '',
-        description: project.description || null,
-        created_at: now,
-        updated_at: now,
-        start_date: project.start_date || null,
-        end_date: project.end_date || null,
-        required_members: project.required_members || null,
-        priority: project.priority || '10'
-      }
-
-      console.log('Formatted project data:', newProject);
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('projects')
-        .insert([newProject])
-        .select()
-        .single()
+        .insert({
+          ...project,
+          owner_id: user.id,
+          owner_email: user.email,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error
-      }
-      
-      setProjects(prev => [data, ...prev])
+      if (error) throw error
+
+      await fetchProjects()
+
       toast({
-        title: "Project created",
-        description: "Your project has been created successfully.",
+        title: "Success",
+        description: "Project created successfully"
       })
-      return data
     } catch (error) {
-      console.error('Detailed error:', error);
+      console.error('Error adding project:', error)
+      toast({
+        title: "Error creating project",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive"
+      })
       throw error
     }
   }
@@ -142,14 +139,17 @@ export function useProjects() {
   }
 
   useEffect(() => {
-    fetchProjects()
-  }, [])
+    if (session && user?.id) {
+      fetchProjects()
+    } else {
+      setLoading(false)
+    }
+  }, [session, user?.id])
 
   return {
     projects,
     loading,
-    fetchProjects,
-    createProject,
+    createProject: addProject,
     updateProject,
     deleteProject,
   }

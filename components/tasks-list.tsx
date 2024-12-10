@@ -11,6 +11,7 @@ import { useTasks } from "@/hooks/use-tasks"
 import { useProjects } from "@/hooks/use-projects"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import type { Task } from "@/types/database.types"
+import type { TaskCreate } from "@/hooks/use-tasks"
 
 export function TasksList() {
   const { user } = useSupabase()
@@ -34,17 +35,14 @@ export function TasksList() {
     console.log('Add task clicked', { newTask, user })
     if (newTask.project_id && newTask.title && user?.id) {
       try {
-        const taskData = {
+        await createTask({
           project_id: newTask.project_id,
           title: newTask.title,
-          assigned_to: user.id,
           duration: Number(newTask.duration) || 0,
-          order_index: Number(newTask.order_index) || 0
-        }
-        
-        console.log('Submitting task:', taskData)
-        
-        await createTask(taskData)
+          order_index: Number(newTask.order_index) || 0,
+          assigned_to: user.id,
+          auth_id: user.id
+        } as TaskCreate)
         
         setNewTask({
           project_id: '',
@@ -76,6 +74,10 @@ export function TasksList() {
 
   const handleDeleteTask = async (id: string) => {
     await deleteTask(id)
+  }
+
+  if (!user) {
+    return <div>Please log in to view tasks</div>
   }
 
   if (loading) {

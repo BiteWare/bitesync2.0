@@ -208,7 +208,7 @@ export interface Database {
   }
 }
 
-export interface Task {
+export type Task = {
   id: string
   project_id: string
   title: string
@@ -217,10 +217,8 @@ export interface Task {
   order_index: number
   created_at: string
   updated_at: string
+  auth_id: string
   projects?: {
     name: string
-  }
-  assigned_user?: {
-    email: string
-  }
+  }[] | null
 } 

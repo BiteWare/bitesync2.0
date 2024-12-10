@@ -4,18 +4,43 @@ import { supabase } from '@/lib/supabaseClient'
 import type { Task } from '@/types/database.types'
 import { useSupabase } from '@/components/providers/supabase-provider'
 
+export type TaskCreate = {
+  project_id: string
+  title: string
+  duration: number
+  order_index: number
+  assigned_to: string
+  auth_id: string
+}
+
+// Define the shape of raw data from Supabase
+type RawTaskWithProject = {
+  id: string
+  project_id: string
+  title: string
+  assigned_to: string
+  auth_id: string
+  duration: number
+  order_index: number
+  created_at: string
+  updated_at: string
+  projects: {
+    name: string
+  } | null
+}
+
 export function useTasks() {
-  const { user } = useSupabase()
+  const { user, session } = useSupabase()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   async function fetchTasks() {
-    if (!user?.id) return
-    
     try {
-      setLoading(true)
-      console.log('Fetching tasks...')
+      if (!session || !user?.id) {
+        setTasks([])
+        return
+      }
 
       const { data, error } = await supabase
         .from('tasks')
@@ -32,20 +57,18 @@ export function useTasks() {
             name
           )
         `)
-        .eq('assigned_to', user.id)
-        .order('order_index', { ascending: true })
+        .eq('assigned_to', user.id) as { data: RawTaskWithProject[] | null; error: any }
 
       if (error) throw error
-
-      const formattedData: Task[] = data.map((task) => ({
+      
+      const formattedTasks: Task[] = (data || []).map(task => ({
         ...task,
-        projects: task.projects?.[0] || { name: 'Unknown Project' }
+        projects: [{ name: task.projects?.name || 'Unknown Project' }]
       }))
 
-      console.log('Tasks fetched:', formattedData)
-      setTasks(formattedData)
+      setTasks(formattedTasks)
     } catch (error) {
-      console.error('Error in fetchTasks:', error)
+      console.error('Error fetching tasks:', error)
       toast({
         title: "Error fetching tasks",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -56,17 +79,15 @@ export function useTasks() {
     }
   }
 
-  async function createTask(taskData: {
-    project_id: string
-    title: string
-    duration: number
-    order_index: number
-  }) {
+  async function createTask(task: TaskCreate) {
     if (!user?.id) return
 
     try {
       const newTask = {
-        ...taskData,
+        project_id: task.project_id,
+        title: task.title,
+        duration: task.duration,
+        order_index: task.order_index,
         assigned_to: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -88,21 +109,18 @@ export function useTasks() {
             name
           )
         `)
-        .single()
+        .single() as { data: RawTaskWithProject | null; error: any }
 
       if (error) throw error
 
-      const formattedTask: Task = {
-        ...data,
-        projects: data.projects?.[0] || { name: 'Unknown Project' }
-      }
+      await fetchTasks()
 
-      setTasks(prev => [formattedTask, ...prev])
       toast({
         title: "Task created",
         description: "Your task has been created successfully.",
       })
-      return formattedTask
+
+      return data
     } catch (error) {
       console.error('Error creating task:', error)
       toast({
@@ -139,13 +157,13 @@ export function useTasks() {
             name
           )
         `)
-        .single()
+        .single() as { data: RawTaskWithProject | null; error: any }
 
       if (error) throw error
 
       const updatedTask: Task = {
-        ...data,
-        projects: data.projects?.[0] || { name: 'Unknown Project' }
+        ...data!,
+        projects: [{ name: data?.projects?.name || 'Unknown Project' }]
       }
 
       setTasks(prev => prev.map(t => t.id === id ? updatedTask : t))
@@ -192,10 +210,12 @@ export function useTasks() {
   }
 
   useEffect(() => {
-    if (user?.id) {
+    if (session && user?.id) {
       fetchTasks()
+    } else {
+      setLoading(false)
     }
-  }, [user?.id])
+  }, [session, user?.id])
 
   return {
     tasks,

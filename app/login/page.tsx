@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabaseClient"
 import Image from "next/image"
+import { useSupabase } from "@/components/providers/supabase-provider"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -17,13 +18,21 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const { user } = useSupabase();
+
+  // Check authentication state on component mount
+  useEffect(() => {
+    if (user) {
+      // User is already logged in, redirect to homepage
+      router.push('/')
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      // First attempt to sign in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -37,7 +46,6 @@ export default function LoginPage() {
         throw new Error('No session data received')
       }
 
-      // Successfully signed in
       toast({
         title: "Success",
         description: "Successfully signed in!",

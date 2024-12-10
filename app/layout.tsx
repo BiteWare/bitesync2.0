@@ -1,7 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from '@/components/providers/supabase-provider'
 
@@ -27,14 +26,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <SupabaseProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <main className="container mx-auto py-6">{children}</main>
-          </ThemeProvider>
+          <main className="container mx-auto py-6">{children}</main>
           <Toaster />
         </SupabaseProvider>
       </body>

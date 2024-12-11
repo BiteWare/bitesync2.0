@@ -22,10 +22,10 @@ export function TasksList() {
   const { projects } = useProjects()
   const { toast } = useToast()
   
-  const [newTask, setNewTask] = useState<Partial<Task>>({
-    project_id: '',
+  const [newTask, setNewTask] = useState<Partial<TaskCreate>>({
+    project_id: null,
     title: '',
-    assigned_to: '',
+    assigned_to: null,
     duration: 0,
     order_index: 0
   })
@@ -37,35 +37,28 @@ export function TasksList() {
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
 
   const handleAddTask = async () => {
-    console.log('Add task clicked', { newTask, user })
-    if (newTask.project_id && newTask.title && user?.id) {
-      try {
-        await createTask({
-          project_id: newTask.project_id,
-          title: newTask.title,
-          duration: Number(newTask.duration) || 0,
-          order_index: Number(newTask.order_index) || 0,
-          assigned_to: user.id,
-          auth_id: user.id
-        } as TaskCreate)
-        
-        setNewTask({
-          project_id: '',
-          title: '',
-          assigned_to: '',
-          duration: 0,
-          order_index: 0
-        })
-        setAddDialogOpen(false)
-      } catch (error) {
-        console.error('Error in handleAddTask:', error)
-      }
-    } else {
-      console.log('Validation failed:', { 
-        project_id: newTask.project_id, 
-        title: newTask.title, 
-        user_id: user?.id 
+    if (!user?.id) return
+
+    try {
+      await createTask({
+        project_id: newTask.project_id || null,
+        title: newTask.title || '',
+        duration: Number(newTask.duration) || 0,
+        order_index: Number(newTask.order_index) || 0,
+        assigned_to: newTask.assigned_to || null,
+        auth_id: user.id
       })
+      
+      setNewTask({
+        project_id: null,
+        title: '',
+        assigned_to: null,
+        duration: 0,
+        order_index: 0
+      })
+      setAddDialogOpen(false)
+    } catch (error) {
+      console.error('Error in handleAddTask:', error)
     }
   }
 
@@ -151,8 +144,8 @@ export function TasksList() {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <Select 
-                  value={newTask.project_id} 
-                  onValueChange={(value) => setNewTask({ ...newTask, project_id: value })}
+                  value={newTask.project_id ?? ''} 
+                  onValueChange={(value) => setNewTask({ ...newTask, project_id: value || null })}
                 >
                   <SelectTrigger aria-label="Select Project">
                     <SelectValue placeholder="Select Project" />
@@ -224,8 +217,8 @@ export function TasksList() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <Select 
-              value={editingTask?.project_id} 
-              onValueChange={(value) => setEditingTask(prev => prev ? {...prev, project_id: value} : null)}
+              value={editingTask?.project_id ?? ''} 
+              onValueChange={(value) => setEditingTask(prev => prev ? {...prev, project_id: value || null} : null)}
             >
               <SelectTrigger aria-label="Select Project">
                 <SelectValue placeholder="Select Project" />
@@ -370,7 +363,7 @@ export function TasksList() {
                   }}
                 />
               </TableCell>
-              <TableCell>{(task as any).projects?.name || 'Unknown Project'}</TableCell>
+              <TableCell>{task.projects?.name || 'Unassigned'}</TableCell>
               <TableCell>{task.title}</TableCell>
               <TableCell>{(task as any).assigned_user?.email || 'Unassigned'}</TableCell>
               <TableCell>{task.duration} {task.duration === 1 ? 'hour' : 'hours'}</TableCell>

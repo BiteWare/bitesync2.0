@@ -166,9 +166,9 @@ export interface Database {
       tasks: {
         Row: {
           id: string
-          project_id: string
+          project_id: string | null
           title: string
-          assigned_to: string
+          assigned_to: string | null
           duration: number
           order_index: number
           created_at: string
@@ -176,9 +176,9 @@ export interface Database {
         }
         Insert: {
           id?: string
-          project_id: string
+          project_id?: string | null
           title: string
-          assigned_to: string
+          assigned_to?: string | null
           duration: number
           order_index: number
           created_at?: string
@@ -186,9 +186,9 @@ export interface Database {
         }
         Update: {
           id?: string
-          project_id?: string
+          project_id?: string | null
           title?: string
-          assigned_to?: string
+          assigned_to?: string | null
           duration?: number
           order_index?: number
           created_at?: string
@@ -210,15 +210,19 @@ export interface Database {
 
 export type Task = {
   id: string
-  project_id: string
+  project_id: string | null
   title: string
-  assigned_to: string
+  assigned_to: string | null
   duration: number
   order_index: number
   created_at: string
   updated_at: string
   auth_id: string
-  projects?: {
+  projects: {
     name: string
-  }[] | null
+    owner_id: string
+  } | null
+  assigned_user?: {
+    email: string
+  } | null
 } 

@@ -120,9 +120,12 @@ export function useUserProfile() {
           ...updates,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', userId)
+        .eq('id', userId)
 
-      if (error) throw error
+      if (error) {
+        console.error('Update error:', error)
+        throw error
+      }
 
       await fetchProfiles()
     } catch (error) {

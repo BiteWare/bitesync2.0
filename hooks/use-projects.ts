@@ -6,10 +6,10 @@ import { useSupabase } from '@/components/providers/supabase-provider'
 
 type ProjectCreate = {
   name: string
-  description?: string
-  start_date?: string
-  end_date?: string
-  required_members?: string
+  description?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  required_members?: string | null
   priority?: string
   owner_id?: string
   owner_email?: string
@@ -47,64 +47,56 @@ export function useProjects() {
     }
   }
 
-  const addProject = async (project: ProjectCreate) => {
+  const addProject = async (projectData: ProjectCreate) => {
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError) throw authError
-      if (!user) throw new Error('No authenticated user found')
+      if (!user?.id) throw new Error('User not authenticated')
+      
+      const newProject = {
+        ...projectData,
+        owner_id: user.id,
+        owner_email: user.email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('projects')
-        .insert({
-          ...project,
-          owner_id: user.id,
-          owner_email: user.email,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .insert([newProject])
+        .select()
+        .single()
 
       if (error) throw error
 
-      await fetchProjects()
-
-      toast({
-        title: "Success",
-        description: "Project created successfully"
-      })
+      setProjects(prev => [...prev, data])
+      return data
     } catch (error) {
-      console.error('Error adding project:', error)
+      console.error('Error creating project:', error)
       toast({
         title: "Error creating project",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
       })
       throw error
     }
   }
 
-  async function updateProject(id: string, updates: Partial<Project>) {
+  const updateProject = async (id: string, updates: Partial<Project>) => {
     try {
       const { data, error } = await supabase
         .from('projects')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(updates)
         .eq('id', id)
         .select()
         .single()
 
       if (error) throw error
 
-      setProjects(prev => prev.map(p => 
-        p.id === id ? data : p
+      setProjects(prev => prev.map(project => 
+        project.id === id ? { ...project, ...data } : project
       ))
-      toast({
-        title: "Project updated",
-        description: "Your project has been updated successfully.",
-      })
       return data
     } catch (error) {
+      console.error('Error updating project:', error)
       toast({
         title: "Error updating project",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -114,7 +106,7 @@ export function useProjects() {
     }
   }
 
-  async function deleteProject(id: string) {
+  const deleteProject = async (id: string) => {
     try {
       const { error } = await supabase
         .from('projects')
@@ -123,12 +115,9 @@ export function useProjects() {
 
       if (error) throw error
 
-      setProjects(prev => prev.filter(p => p.id !== id))
-      toast({
-        title: "Project deleted",
-        description: "Your project has been deleted successfully.",
-      })
+      setProjects(prev => prev.filter(project => project.id !== id))
     } catch (error) {
+      console.error('Error deleting project:', error)
       toast({
         title: "Error deleting project",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -139,12 +128,8 @@ export function useProjects() {
   }
 
   useEffect(() => {
-    if (session && user?.id) {
-      fetchProjects()
-    } else {
-      setLoading(false)
-    }
-  }, [session, user?.id])
+    fetchProjects()
+  }, [user?.id])
 
   return {
     projects,
@@ -153,4 +138,4 @@ export function useProjects() {
     updateProject,
     deleteProject,
   }
-} 
+}

@@ -6,29 +6,27 @@ import { useSupabase } from '@/components/providers/supabase-provider'
 import { useProjects } from '@/hooks/use-projects'
 
 export type TaskCreate = {
-  project_id: string
+  project_id: string | null
   title: string
   duration: number
   order_index: number
-  assigned_to: string
+  assigned_to: string | null
   auth_id: string
 }
 
-// Define the shape of raw data from Supabase
-type TaskWithProject = {
-  id: string;
-  project_id: string;
-  title: string;
-  assigned_to: string;
-  auth_id: string;
-  duration: number;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
+type TaskResponse = {
+  id: string
+  project_id: string | null
+  title: string
+  assigned_to: string | null
+  duration: number
+  order_index: number
+  created_at: string
+  updated_at: string
   projects: {
-    name: string;
-    owner_id: string;
-  } | null;
+    name: string
+    owner_id: string
+  } | null
 }
 
 export function useTasks() {
@@ -41,10 +39,12 @@ export function useTasks() {
   async function fetchTasks() {
     try {
       if (!session || !user?.id) {
+        console.log('No session or user ID')
         setTasks([])
         return
       }
 
+      console.log('Fetching tasks for user:', user.id)
       const { data, error } = await supabase
         .from('tasks')
         .select(`
@@ -54,21 +54,33 @@ export function useTasks() {
             owner_id
           )
         `)
-        .or(`assigned_to.eq.${user.id}`) as { data: TaskWithProject[] | null; error: any }
+        .or(`assigned_to.eq.${user.id},assigned_to.is.null`) as { data: TaskResponse[] | null, error: any }
 
       if (error) {
-        console.error('Fetch error:', error)
+        console.error('Supabase error:', error)
         throw error
       }
-      
-      const formattedTasks: Task[] = (data || []).map(task => ({
-        ...task,
-        projects: [{ name: task.projects?.name || 'Unknown Project' }]
-      }))
 
+      console.log('Raw task data:', data)
+      
+      const formattedTasks = (data || []).map(task => {
+        console.log('Formatting task:', task)
+        return {
+          ...task,
+          project_id: task.project_id || null,
+          assigned_to: task.assigned_to || null,
+          auth_id: user.id,
+          projects: task.projects ? {
+            name: task.projects.name,
+            owner_id: task.projects.owner_id
+          } : null
+        }
+      }) as Task[]
+
+      console.log('Formatted tasks:', formattedTasks)
       setTasks(formattedTasks)
     } catch (error) {
-      console.error('Error fetching tasks:', error)
+      console.error('Detailed fetch error:', error)
       toast({
         title: "Error fetching tasks",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -79,51 +91,32 @@ export function useTasks() {
     }
   }
 
-  async function createTask(task: TaskCreate) {
+  async function createTask(taskData: TaskCreate) {
     if (!user?.id) {
       throw new Error('No authenticated user')
     }
 
     try {
-      console.log('Creating task with data:', task)
-      
-      // Ensure all required fields have valid values
       const newTask = {
-        project_id: task.project_id || projects[0]?.id, // Fallback to first project
-        title: task.title,
-        duration: Number(task.duration) || 0,
-        order_index: Number(task.order_index) || 0,
-        assigned_to: task.assigned_to || user.id,
+        project_id: taskData.project_id,
+        title: taskData.title,
+        duration: Number(taskData.duration),
+        order_index: Number(taskData.order_index),
+        assigned_to: taskData.assigned_to,
         auth_id: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
 
-      console.log('Sending to database:', newTask)
-
       const { data, error } = await supabase
         .from('tasks')
-        .insert([newTask])
-        .select(`
-          id,
-          project_id,
-          title, 
-          assigned_to,
-          duration,
-          order_index,
-          created_at,
-          updated_at
-        `)
+        .insert(newTask)
+        .select()
         .single()
 
-      if (error) {
-        console.error('Supabase error:', error)
-        throw error
-      }
+      if (error) throw error
 
-      console.log('Task created successfully:', data)
       await fetchTasks()
-
       return data
     } catch (error) {
       console.error('Error in createTask:', error)
@@ -131,54 +124,19 @@ export function useTasks() {
     }
   }
 
-  async function updateTask(id: string, updates: Partial<Task>) {
-    if (!user?.id) return
-
+  const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
-      // Remove any undefined values and projects array from updates
-      const cleanUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
-        if (value !== undefined && key !== 'projects') {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, any>);
-
       const { data, error } = await supabase
         .from('tasks')
-        .update({
-          ...cleanUpdates,
-          updated_at: new Date().toISOString()
-        })
+        .update(updates)
         .eq('id', id)
-        .select(`
-          *,
-          projects:projects!tasks_project_id_fkey (
-            name,
-            owner_id
-          )
-        `)
-        .single() as { data: TaskWithProject | null; error: any }
+        .select()
+        .single()
 
-      if (error) {
-        console.error('Update error:', error);
-        throw error;
-      }
+      if (error) throw error
 
-      if (!data) {
-        throw new Error('No data returned from update');
-      }
-
-      const updatedTask: Task = {
-        ...data,
-        projects: [{ name: data.projects?.name || 'Unknown Project' }]
-      }
-
-      setTasks(prev => prev.map(t => t.id === id ? updatedTask : t))
-      toast({
-        title: "Task updated",
-        description: "Your task has been updated successfully.",
-      })
-      return updatedTask;
+      await fetchTasks()
+      return data
     } catch (error) {
       console.error('Error updating task:', error)
       toast({
@@ -190,24 +148,18 @@ export function useTasks() {
     }
   }
 
-  async function deleteTask(id: string) {
-    if (!user?.id) return
-
+  const deleteTask = async (id: string) => {
     try {
       const { error } = await supabase
         .from('tasks')
         .delete()
         .eq('id', id)
-        .eq('assigned_to', user.id)
 
       if (error) throw error
 
-      setTasks(prev => prev.filter(t => t.id !== id))
-      toast({
-        title: "Task deleted",
-        description: "Your task has been deleted successfully.",
-      })
+      setTasks(prev => prev.filter(task => task.id !== id))
     } catch (error) {
+      console.error('Error deleting task:', error)
       toast({
         title: "Error deleting task",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -218,12 +170,8 @@ export function useTasks() {
   }
 
   useEffect(() => {
-    if (session && user?.id) {
-      fetchTasks()
-    } else {
-      setLoading(false)
-    }
-  }, [session, user?.id])
+    fetchTasks()
+  }, [user?.id])
 
   return {
     tasks,
@@ -233,4 +181,4 @@ export function useTasks() {
     updateTask,
     deleteTask,
   }
-} 
+}

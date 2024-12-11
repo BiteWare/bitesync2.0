@@ -16,14 +16,17 @@ export function BulkImportTasks({ onImport, projects }: BulkImportTasksProps) {
   const { user } = useSupabase()
   const { toast } = useToast()
 
-  const transformData = (data: any, index: number) => {
-    // Simply take the raw values from CSV, no transformations
+  const transformData = (data: any, index: number): Omit<TaskCreate, 'auth_id'> => {
+    // Project matching is now optional
+    const matchedProject = projects.find(p => p.name.toLowerCase() === data.Project?.trim().toLowerCase());
+    const projectId = data.Project?.trim() ? matchedProject?.id ?? null : null;
+
     return {
-      project_id: data.Project || '',
-      title: data.Title || '',
-      duration: data.Duration || 0,
-      order_index: data.Order || index,
-      assigned_to: data['Assigned To'] || ''
+      project_id: projectId,
+      title: data.Title?.trim() || '',
+      duration: Number(data.Duration) || 0,
+      order_index: Number(data.Order) || index,
+      assigned_to: data['Assigned To']?.trim() || null
     }
   }
 
@@ -42,14 +45,16 @@ export function BulkImportTasks({ onImport, projects }: BulkImportTasksProps) {
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => {
-        // Normalize headers to match Excel column names
         return header.trim();
       },
       complete: (results) => {
         try {
           const parsedTasks = results.data
             .map((row: any, index: number) => transformData(row, index))
-            .filter((task): task is NonNullable<typeof task> => task !== null);
+            .filter((task): task is Omit<TaskCreate, 'auth_id'> => 
+              // Only title is required now
+              task.title !== ''
+            );
 
           if (parsedTasks.length === 0) {
             toast({
@@ -59,7 +64,7 @@ export function BulkImportTasks({ onImport, projects }: BulkImportTasksProps) {
             })
             return
           }
-
+          
           onImport(parsedTasks)
           
           toast({
@@ -72,7 +77,8 @@ export function BulkImportTasks({ onImport, projects }: BulkImportTasksProps) {
           console.error('Import error:', error)
           toast({
             title: "Import Failed",
-            description: "Failed to process CSV file"
+            description: "Failed to process CSV file",
+            variant: "destructive"
           })
         }
       },
@@ -104,4 +110,4 @@ export function BulkImportTasks({ onImport, projects }: BulkImportTasksProps) {
       </Button>
     </div>
   )
-} 
+}

@@ -379,12 +379,14 @@ export function CommitmentsList() {
             <TableRow 
               key={commitment.id}
               className="cursor-pointer hover:bg-muted/50"
-              onClick={() => {
-                setSelectedCommitment(commitment)
-                setViewDialogOpen(true)
+              onClick={(e) => {
+                if (!(e.target as HTMLElement).closest('.action-buttons')) {
+                  setSelectedCommitment(commitment)
+                  setViewDialogOpen(true)
+                }
               }}
             >
-              <TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <Checkbox 
                   checked={selectedCommitments.includes(commitment.id)}
                   onCheckedChange={(checked) => handleSelectCommitment(commitment.id, checked as boolean)}
@@ -396,7 +398,7 @@ export function CommitmentsList() {
               <TableCell>{commitment.title}</TableCell>
               <TableCell>{commitment.startDate}</TableCell>
               <TableCell>{commitment.endDate}</TableCell>
-              <TableCell className="flex gap-2">
+              <TableCell className="flex gap-2 action-buttons" onClick={(e) => e.stopPropagation()}>
                 <Button 
                   variant="ghost" 
                   size="icon"

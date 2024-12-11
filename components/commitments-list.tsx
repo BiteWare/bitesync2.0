@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useCommitments } from '@/hooks/use-commitments'
 import { useSupabase } from '@/components/providers/supabase-provider'
 import { Commitment } from '@/types/custom'
+import { BulkImportButton } from "@/components/bulk-import-button"
 
 export function CommitmentsList() {
   const { user } = useSupabase()
@@ -109,97 +110,121 @@ export function CommitmentsList() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Commitment
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Commitment</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <Input 
-                type="text" 
-                placeholder="Owner"
-                value={newCommitment.owner || ''}
-                onChange={(e) => setNewCommitment({ ...newCommitment, owner: e.target.value })}
-              />
-              <Select 
-                defaultValue="holidays"
-                onValueChange={(value) => setNewCommitment({ ...newCommitment, type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="holidays">Holidays</SelectItem>
-                  <SelectItem value="meetings">Meetings</SelectItem>
-                  <SelectItem value="breaks">Breaks</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select 
-                defaultValue="firm"
-                onValueChange={(value) => setNewCommitment({ ...newCommitment, flexibility: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Flexibility" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="firm">Firm</SelectItem>
-                  <SelectItem value="flexible">Flexible</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input 
-                type="text" 
-                placeholder="Title"
-                value={newCommitment.title}
-                onChange={(e) => setNewCommitment({ ...newCommitment, title: e.target.value })}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Start Date</label>
-                  <Input 
-                    type="date"
-                    value={newCommitment.startDate}
-                    onChange={(e) => setNewCommitment({ ...newCommitment, startDate: e.target.value })}
-                  />
+        <div className="flex gap-2">
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Commitment
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Commitment</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <Input 
+                  type="text" 
+                  placeholder="Owner"
+                  value={newCommitment.owner || ''}
+                  onChange={(e) => setNewCommitment({ ...newCommitment, owner: e.target.value })}
+                />
+                <Select 
+                  defaultValue="holidays"
+                  onValueChange={(value) => setNewCommitment({ ...newCommitment, type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="holidays">Holidays</SelectItem>
+                    <SelectItem value="meetings">Meetings</SelectItem>
+                    <SelectItem value="breaks">Breaks</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select 
+                  defaultValue="firm"
+                  onValueChange={(value) => setNewCommitment({ ...newCommitment, flexibility: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Flexibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="firm">Firm</SelectItem>
+                    <SelectItem value="flexible">Flexible</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input 
+                  type="text" 
+                  placeholder="Title"
+                  value={newCommitment.title}
+                  onChange={(e) => setNewCommitment({ ...newCommitment, title: e.target.value })}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Start Date</label>
+                    <Input 
+                      type="date"
+                      value={newCommitment.startDate}
+                      onChange={(e) => setNewCommitment({ ...newCommitment, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Start Time</label>
+                    <Input 
+                      type="time"
+                      value={newCommitment.startTime || ''}
+                      onChange={(e) => setNewCommitment({ ...newCommitment, startTime: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Start Time</label>
-                  <Input 
-                    type="time"
-                    value={newCommitment.startTime || ''}
-                    onChange={(e) => setNewCommitment({ ...newCommitment, startTime: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">End Date</label>
+                    <Input 
+                      type="date"
+                      value={newCommitment.endDate}
+                      onChange={(e) => setNewCommitment({ ...newCommitment, endDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">End Time</label>
+                    <Input 
+                      type="time"
+                      value={newCommitment.endTime || ''}
+                      onChange={(e) => setNewCommitment({ ...newCommitment, endTime: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">End Date</label>
-                  <Input 
-                    type="date"
-                    value={newCommitment.endDate}
-                    onChange={(e) => setNewCommitment({ ...newCommitment, endDate: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">End Time</label>
-                  <Input 
-                    type="time"
-                    value={newCommitment.endTime || ''}
-                    onChange={(e) => setNewCommitment({ ...newCommitment, endTime: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleAddCommitment}>Add Commitment</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button onClick={handleAddCommitment}>Add Commitment</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <BulkImportButton 
+            onImport={async (importedCommitments) => {
+              try {
+                console.log('Starting import of commitments:', importedCommitments)
+                
+                for (const commitment of importedCommitments) {
+                  const formattedCommitment = {
+                    ...commitment,
+                    owner: user?.email || '',
+                    type: commitment.type || 'holidays',
+                    flexibility: commitment.flexibility || 'firm',
+                    startDate: commitment.startDate || new Date().toISOString().split('T')[0],
+                    endDate: commitment.endDate || new Date().toISOString().split('T')[0]
+                  }
+                  
+                  await addCommitment(formattedCommitment)
+                }
+              } catch (error) {
+                console.error('Import error:', error)
+              }
+            }}
+          />
+        </div>
 
         {selectedCommitments.length > 0 && (
           <Button variant="destructive" onClick={handleBulkDelete}>

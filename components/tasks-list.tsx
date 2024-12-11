@@ -12,11 +12,15 @@ import { useProjects } from "@/hooks/use-projects"
 import { useSupabase } from "@/components/providers/supabase-provider"
 import type { Task } from "@/types/database.types"
 import type { TaskCreate } from "@/hooks/use-tasks"
+import { BulkImportTasks } from "@/components/bulk-import-tasks"
+import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export function TasksList() {
   const { user } = useSupabase()
   const { tasks, loading, createTask, updateTask, deleteTask } = useTasks()
   const { projects } = useProjects()
+  const { toast } = useToast()
   
   const [newTask, setNewTask] = useState<Partial<Task>>({
     project_id: '',
@@ -30,6 +34,7 @@ export function TasksList() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([])
 
   const handleAddTask = async () => {
     console.log('Add task clicked', { newTask, user })
@@ -76,6 +81,48 @@ export function TasksList() {
     await deleteTask(id)
   }
 
+  const handleBulkDelete = async () => {
+    try {
+      for (const id of selectedTasks) {
+        await deleteTask(id)
+      }
+      setSelectedTasks([])
+    } catch (error) {
+      console.error('Error deleting tasks:', error)
+    }
+  }
+
+  const handleBulkImport = async (importedTasks: Omit<TaskCreate, 'auth_id'>[]) => {
+    try {
+      console.log('Starting import of tasks:', importedTasks)
+      
+      if (!user?.id) {
+        throw new Error('No user ID available')
+      }
+
+      for (const task of importedTasks) {
+        console.log('Creating task:', task)
+        try {
+          await createTask({
+            ...task,
+            auth_id: user.id,
+            assigned_to: user.id
+          })
+        } catch (taskError) {
+          console.error('Error creating individual task:', taskError)
+          throw taskError
+        }
+      }
+    } catch (error) {
+      console.error('Import error:', error)
+      toast({
+        title: "Error importing tasks",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive"
+      })
+    }
+  }
+
   if (!user) {
     return <div>Please log in to view tasks</div>
   }
@@ -86,71 +133,86 @@ export function TasksList() {
 
   return (
     <div className="space-y-4">
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogTrigger asChild>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Task
+      <div className="flex justify-between items-center">
+        <div className="flex gap-2">
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Task
+              </Button>
+            </DialogTrigger>
+            <DialogContent aria-describedby="add-task-description">
+              <DialogHeader>
+                <DialogTitle>Add New Task</DialogTitle>
+                <DialogDescription id="add-task-description">
+                  Fill in the details to create a new task.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <Select 
+                  value={newTask.project_id} 
+                  onValueChange={(value) => setNewTask({ ...newTask, project_id: value })}
+                >
+                  <SelectTrigger aria-label="Select Project">
+                    <SelectValue placeholder="Select Project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input 
+                  type="text" 
+                  placeholder="Task Title"
+                  value={newTask.title || ''}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  aria-label="Task Title"
+                />
+                <textarea
+                  className="flex h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Assigned To"
+                  value={newTask.assigned_to || ''}
+                  onChange={(e) => setNewTask({ ...newTask, assigned_to: e.target.value })}
+                  aria-label="Assigned To"
+                  rows={2}
+                />
+                <Input 
+                  type="number" 
+                  placeholder="Duration (hours)"
+                  value={newTask.duration || ''}
+                  onChange={(e) => setNewTask({ ...newTask, duration: Number(e.target.value) })}
+                  aria-label="Duration"
+                />
+                <Input 
+                  type="number" 
+                  placeholder="Order"
+                  value={newTask.order_index || ''}
+                  onChange={(e) => setNewTask({ ...newTask, order_index: Number(e.target.value) })}
+                  aria-label="Order"
+                />
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddTask}>Add Task</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <BulkImportTasks 
+            onImport={handleBulkImport} 
+            projects={projects}
+          />
+        </div>
+
+        {selectedTasks?.length > 0 && (
+          <Button variant="destructive" onClick={handleBulkDelete}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Selected ({selectedTasks.length})
           </Button>
-        </DialogTrigger>
-        <DialogContent aria-describedby="add-task-description">
-          <DialogHeader>
-            <DialogTitle>Add New Task</DialogTitle>
-            <DialogDescription id="add-task-description">
-              Fill in the details to create a new task.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <Select 
-              value={newTask.project_id} 
-              onValueChange={(value) => setNewTask({ ...newTask, project_id: value })}
-            >
-              <SelectTrigger aria-label="Select Project">
-                <SelectValue placeholder="Select Project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input 
-              type="text" 
-              placeholder="Task Title"
-              value={newTask.title || ''}
-              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-              aria-label="Task Title"
-            />
-            <textarea
-              className="flex h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Assigned To"
-              value={newTask.assigned_to || ''}
-              onChange={(e) => setNewTask({ ...newTask, assigned_to: e.target.value })}
-              aria-label="Assigned To"
-              rows={2}
-            />
-            <Input 
-              type="number" 
-              placeholder="Duration (hours)"
-              value={newTask.duration || ''}
-              onChange={(e) => setNewTask({ ...newTask, duration: Number(e.target.value) })}
-              aria-label="Duration"
-            />
-            <Input 
-              type="number" 
-              placeholder="Order"
-              value={newTask.order_index || ''}
-              onChange={(e) => setNewTask({ ...newTask, order_index: Number(e.target.value) })}
-              aria-label="Order"
-            />
-          </div>
-          <DialogFooter>
-            <Button onClick={handleAddTask}>Add Task</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+      </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent aria-describedby="edit-task-description">
@@ -266,6 +328,18 @@ export function TasksList() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[50px]">
+              <Checkbox 
+                checked={tasks.length > 0 && selectedTasks.length === tasks.length}
+                onCheckedChange={checked => {
+                  if (checked) {
+                    setSelectedTasks(tasks.map(t => t.id))
+                  } else {
+                    setSelectedTasks([])
+                  }
+                }}
+              />
+            </TableHead>
             <TableHead>Project</TableHead>
             <TableHead>Title</TableHead>
             <TableHead>Assigned To</TableHead>
@@ -284,10 +358,22 @@ export function TasksList() {
                 setViewDialogOpen(true)
               }}
             >
+              <TableCell onClick={e => e.stopPropagation()}>
+                <Checkbox 
+                  checked={selectedTasks.includes(task.id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedTasks(prev => [...prev, task.id])
+                    } else {
+                      setSelectedTasks(prev => prev.filter(id => id !== task.id))
+                    }
+                  }}
+                />
+              </TableCell>
               <TableCell>{(task as any).projects?.name || 'Unknown Project'}</TableCell>
               <TableCell>{task.title}</TableCell>
               <TableCell>{(task as any).assigned_user?.email || 'Unassigned'}</TableCell>
-              <TableCell>{task.duration} hours</TableCell>
+              <TableCell>{task.duration} {task.duration === 1 ? 'hour' : 'hours'}</TableCell>
               <TableCell>{task.order_index}</TableCell>
               <TableCell className="flex gap-2">
                 <Button 

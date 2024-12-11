@@ -36,34 +36,7 @@ export default function Home() {
           <UserProfile />
         </CollapsibleCard>
 
-        <CollapsibleCard 
-          title="Commitments"
-          headerContent={
-            <BulkImportButton 
-              onImport={async (importedCommitments) => {
-                try {
-                  console.log('Starting import of commitments:', importedCommitments)
-                  
-                  for (const commitment of importedCommitments) {
-                    // Ensure all required fields are present
-                    const formattedCommitment = {
-                      ...commitment,
-                      owner: user?.email || '',
-                      type: commitment.type || 'holidays',
-                      flexibility: commitment.flexibility || 'firm',
-                      startDate: commitment.startDate || new Date().toISOString().split('T')[0],
-                      endDate: commitment.endDate || new Date().toISOString().split('T')[0]
-                    }
-                    
-                    await addCommitment(formattedCommitment)
-                  }
-                } catch (error) {
-                  console.error('Import error:', error)
-                }
-              }}
-            />
-          }
-        >
+        <CollapsibleCard title="Commitments">
           <CommitmentsList />
         </CollapsibleCard>
 

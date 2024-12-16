@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from '@/components/providers/supabase-provider'
+import { redirect } from 'next/navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,6 +23,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Force redirect to login on initial load
+  if (typeof window !== 'undefined' && window.location.pathname === '/') {
+    redirect('/login')
+  }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>

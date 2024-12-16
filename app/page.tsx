@@ -1,6 +1,6 @@
 "use client"
 
-import { Users, Upload, LogOut } from "lucide-react"
+import { Users, Upload, LogOut, WandSparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CollapsibleCard } from "@/components/ui/collapsible-card"
 import { UserProfile } from "@/components/user-profile"
@@ -47,6 +47,13 @@ export default function Home() {
         <CollapsibleCard title="Tasks">
           <TasksList />
         </CollapsibleCard>
+      </div>
+
+      <div className="flex justify-center">
+        <Button className="bg-[#FF3B9A] hover:bg-[#FF3B9A]/90 text-white gap-2">
+          <WandSparkles className="h-5 w-5" />
+          Optimize Schedule
+        </Button>
       </div>
     </div>
   )
